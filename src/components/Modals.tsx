@@ -28,10 +28,13 @@ export function VisitModal({ row, onClose }: { row: Row | null; onClose: () => v
   });
   const set = (k: keyof typeof f, v: string) => setF(p => ({ ...p, [k]: v }));
   const valid = f.name.trim() && f.contact.trim();
+  const [error, setError] = useState<string | null>(null);
 
   const submit = () => {
+    setError(null);
     start(async () => {
-      await saveBusiness({ dbId: row?.dbId, ...f });
+      const res = await saveBusiness({ dbId: row?.dbId, ...f });
+      if (res?.error) { setError(res.error); return; }
       router.refresh();
       onClose();
     });
@@ -83,6 +86,9 @@ export function VisitModal({ row, onClose }: { row: Row | null; onClose: () => v
           <input type="date" style={inpStyle} value={f.followUpDate} onChange={e => set("followUpDate", e.target.value)} />
         </Field>
       </FormRow>
+      {error && (
+        <p style={{ color: C.clay, fontSize: 13, fontWeight: 600, margin: "14px 0 0" }}>{error}</p>
+      )}
       <ModalFooter>
         <button style={ghostBtn} onClick={onClose} disabled={pending}>Cancel</button>
         <button style={{ ...primaryBtn, opacity: valid && !pending ? 1 : .5, pointerEvents: valid && !pending ? "auto" : "none" }}

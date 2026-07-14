@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { AuthError } from "next-auth";
@@ -84,11 +84,43 @@ async function loadOwned(dbId: number, userId: number, isAdmin: boolean) {
   return b;
 }
 
-export async function saveBusiness(input: SaveInput) {
+export async function saveBusiness(input: SaveInput): Promise<{ error?: string }> {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
   const userId = Number(session.user.id);
   const isAdmin = session.user.role === "admin";
+
+  // Duplicate prevention: no two businesses may share a phone number.
+  // Compare on digits only so "077 883 025" and "077883025" collide.
+  const contactDigits = input.contact.replace(/\D/g, "");
+  if (contactDigits) {
+    const [dup] = await db
+      .select({
+        code: businesses.code,
+        name: businesses.name,
+        agentId: businesses.agentId,
+        agentName: users.name,
+      })
+      .from(businesses)
+      .innerJoin(users, eq(businesses.agentId, users.id))
+      .where(
+        and(
+          sql`regexp_replace(${businesses.contact}, '\D', '', 'g') = ${contactDigits}`,
+          input.dbId ? ne(businesses.id, input.dbId) : undefined
+        )
+      )
+      .limit(1);
+
+    if (dup) {
+      if (isAdmin) {
+        return { error: `That number is already logged: ${dup.name} (${dup.code}) by ${dup.agentName}.` };
+      }
+      if (dup.agentId === userId) {
+        return { error: `You've already logged this number — ${dup.name} (${dup.code}).` };
+      }
+      return { error: "That phone number is already logged by another agent. Ask your admin to check." };
+    }
+  }
 
   const fields = {
     name: input.name.trim(),
@@ -113,6 +145,7 @@ export async function saveBusiness(input: SaveInput) {
 
   revalidatePath("/agent");
   revalidatePath("/admin");
+  return {};
 }
 
 type OnboardInput = {
