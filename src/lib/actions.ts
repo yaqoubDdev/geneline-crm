@@ -1,0 +1,158 @@
+"use server";
+
+import { eq } from "drizzle-orm";
+import bcrypt from "bcryptjs";
+import { revalidatePath } from "next/cache";
+import { AuthError } from "next-auth";
+import { auth, signIn, signOut } from "@/auth";
+import { db } from "@/db";
+import { businesses, onboardingAccounts, users } from "@/db/schema";
+import type { BizType, Stage } from "@/lib/types";
+
+/* ---------------- Auth ---------------- */
+export async function authenticate(
+  _prev: string | undefined,
+  formData: FormData
+): Promise<string | undefined> {
+  try {
+    await signIn("credentials", {
+      email: formData.get("email"),
+      password: formData.get("password"),
+      redirectTo: "/",
+    });
+  } catch (error) {
+    if (error instanceof AuthError) return "Invalid email or password.";
+    throw error; // re-throw NEXT_REDIRECT and everything else
+  }
+}
+
+export async function signOutAction() {
+  await signOut({ redirectTo: "/login" });
+}
+
+/* ---------------- Admin: create a user (agent/admin) ---------------- */
+export type AgentFormState = { error?: string; ok?: boolean; name?: string };
+
+export async function createAgent(
+  _prev: AgentFormState,
+  formData: FormData
+): Promise<AgentFormState> {
+  const session = await auth();
+  if (session?.user?.role !== "admin") return { error: "Only admins can add users." };
+
+  const name = String(formData.get("name") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  const role = formData.get("role") === "admin" ? "admin" : "agent";
+
+  if (!name || !email || !password) return { error: "All fields are required." };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Enter a valid email address." };
+  if (password.length < 6) return { error: "Password must be at least 6 characters." };
+
+  const [existing] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+  if (existing) return { error: "That email is already in use." };
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  await db.insert(users).values({ name, email, passwordHash, role });
+
+  revalidatePath("/admin");
+  return { ok: true, name };
+}
+
+/* ---------------- Business CRUD ---------------- */
+type SaveInput = {
+  dbId?: number;
+  name: string;
+  address: string;
+  contact: string;
+  type: BizType;
+  stage: Stage;
+  objection: string;
+  lostReason: string;
+  nextAction: string;
+};
+
+async function loadOwned(dbId: number, userId: number, isAdmin: boolean) {
+  const [b] = await db.select().from(businesses).where(eq(businesses.id, dbId)).limit(1);
+  if (!b) throw new Error("Business not found");
+  if (!isAdmin && b.agentId !== userId) throw new Error("Forbidden");
+  return b;
+}
+
+export async function saveBusiness(input: SaveInput) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+  const userId = Number(session.user.id);
+  const isAdmin = session.user.role === "admin";
+
+  const fields = {
+    name: input.name.trim(),
+    address: input.address.trim() || null,
+    contact: input.contact.trim(),
+    type: input.type,
+    stage: input.stage,
+    objection: input.objection.trim() || null,
+    // Lost reason only applies to Lost deals; clear it otherwise.
+    lostReason: input.stage === "Lost" ? input.lostReason.trim() || null : null,
+    nextAction: input.nextAction.trim() || null,
+  };
+
+  if (input.dbId) {
+    await loadOwned(input.dbId, userId, isAdmin);
+    await db.update(businesses).set(fields).where(eq(businesses.id, input.dbId));
+  } else {
+    // New businesses are owned by the logged-in agent.
+    await db.insert(businesses).values({ ...fields, agentId: userId });
+  }
+
+  revalidatePath("/agent");
+  revalidatePath("/admin");
+}
+
+type OnboardInput = {
+  ownerName: string;
+  email: string;
+  personalPhone: string;
+  password: string;
+};
+
+export async function onboardBusiness(dbId: number, account: OnboardInput, price: number) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+  const userId = Number(session.user.id);
+  const isAdmin = session.user.role === "admin";
+  await loadOwned(dbId, userId, isAdmin);
+
+  const passwordHash = await bcrypt.hash(account.password, 10);
+
+  await db
+    .insert(onboardingAccounts)
+    .values({
+      businessId: dbId,
+      ownerName: account.ownerName.trim(),
+      email: account.email.trim(),
+      personalPhone: account.personalPhone.trim() || null,
+      passwordHash,
+    })
+    .onConflictDoUpdate({
+      target: onboardingAccounts.businessId,
+      set: {
+        ownerName: account.ownerName.trim(),
+        email: account.email.trim(),
+        personalPhone: account.personalPhone.trim() || null,
+        passwordHash,
+      },
+    });
+
+  await db
+    .update(businesses)
+    .set({ onboarded: true, stage: "Won", price })
+    .where(eq(businesses.id, dbId));
+
+  revalidatePath("/agent");
+  revalidatePath("/admin");
+}

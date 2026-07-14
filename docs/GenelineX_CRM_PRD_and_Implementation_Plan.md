@@ -10,8 +10,9 @@ Product Requirements Document  &  Implementation Plan
 | **Field** | **Detail** |
 | - | - |
 | **Document** | **PRD + Implementation Plan** |
-| **Version** | **1.0 (Draft)** |
+| **Version** | **1.1 (Draft)** |
 | **Date** | **14 July 2026** |
+| **Revision 1.1** | **Split Closed → Won / Lost (+ lost_reason); added business address field** |
 | **Owner** | **Diallo — Product / Admin** |
 | **Status** | **For team review** |
 
@@ -69,7 +70,10 @@ The system has two roles with strictly different access. Role is fixed at login 
 
 # **4  Data model**
 
-Two linked records, joined by Business ID. A business starts as a prospect record the moment an agent logs it, and gains an onboarding record only when the deal closes.
+Two linked records, joined by Business ID. A business starts as a prospect record the moment an agent logs it, and gains an onboarding record only when the deal is **Won**.
+
+| **On "closing" — Won vs Lost:  **"Closed" is ambiguous: it can mean *we won them* (deal agreed, ready to onboard) or *we lost them* (not interested, no point going back). These are opposite outcomes and the CRM must not conflate them. The single **Closed** stage is therefore split into two terminal stages: **Won** (agreed to buy → unlocks the Onboard action) and **Lost** (dead — captured with a `lost_reason`). Only **Won** businesses count toward conversion and revenue; **Lost** businesses are excluded from the active pipeline but retained for learning. |
+| - |
 
 ## **4.1  Business (prospect record)**
 
@@ -79,18 +83,20 @@ Created on the first field visit. Business ID is auto-generated (format **GX-000
 | - | - | - |
 | **business\_id** | **auto ID** | **Primary key — GX-0001, GX-0002 …** |
 | **name** | **text** | **Business name** |
+| **address** | **text** | **Physical location / landmark — needed for field visits & route planning** |
 | **contact** | **text** | **Customer-facing phone number** |
 | **type** | **enum** | **Salon / Restaurant / Corporate** |
-| **stage** | **enum** | **New / Interested / Reluctant / Absent / Closed** |
+| **stage** | **enum** | **New / Interested / Reluctant / Absent / Won / Lost** |
 | **objection** | **text** | **What's holding them back / notes** |
+| **lost\_reason** | **text** | **Why the deal died (only when stage = Lost) — price, competitor, not interested, unreachable …** |
 | **next\_action** | **text** | **e.g. 'Reach out Friday'** |
 | **agent** | **ref** | **Owning agent (the person who logged it)** |
-| **price** | **number** | **Agreed price in Le (set at close)** |
+| **price** | **number** | **Agreed price in Le (set when Won)** |
 | **created\_at** | **timestamp** | **Auto** |
 
 ## **4.2  Onboarding account (linked record)**
 
-Created only when a deal is closed. Linked to the business by the same Business ID — a one-to-one sync between the two records.
+Created only when a deal is **Won**. Linked to the business by the same Business ID — a one-to-one sync between the two records.
 
 | **Field** | **Type** | **Notes** |
 | - | - | - |
@@ -116,21 +122,21 @@ Created only when a deal is closed. Linked to the business by the same Business 
 
 - See a list of only my own businesses, searchable by name.
 
-- Quick stats: total logged, interested, closed.
+- Quick stats: total logged, interested, won.
 
-- **Add a business: **name, contact, type, stage, objection, next action. Business ID auto-generated on save.
+- **Add a business: **name, address, contact, type, stage, objection, next action. Business ID auto-generated on save.
 
-- **Update a business: **change stage, objection, or next action after a follow-up visit.
+- **Update a business: **change stage, objection, or next action after a follow-up visit. Marking a business **Lost** prompts for a lost reason.
 
-- **Onboard a closed deal: **when stage = Closed, an Onboard action opens the account form (owner, email, phone, password, agreed price).
+- **Onboard a won deal: **when stage = Won, an Onboard action opens the account form (owner, email, phone, password, agreed price).
 
 ## **5.3  Admin — dashboard**
 
-- Company overview: total businesses, deals closed, conversion rate, total revenue, onboarded count.
+- Company overview: total businesses, deals won, conversion rate, total revenue, onboarded count.
 
-- Agent leaderboard: per-agent logged / closed / revenue, ranked.
+- Agent leaderboard: per-agent logged / won / revenue, ranked.
 
-- Pipeline by stage: distribution across New → Closed.
+- Pipeline by stage: distribution across New → Won, with Lost shown separately (plus a breakdown of lost reasons).
 
 - **All businesses view: **every record across all agents, filterable by type and by agent, searchable by name.
 
