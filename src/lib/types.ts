@@ -15,6 +15,7 @@ export type Row = {
   code: string; // GX-0001
   name: string;
   address: string | null;
+  contactName: string | null; // owner / contact person
   contact: string;
   type: BizType;
   stage: Stage;

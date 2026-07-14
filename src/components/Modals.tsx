@@ -18,6 +18,7 @@ export function VisitModal({ row, onClose }: { row: Row | null; onClose: () => v
   const [f, setF] = useState({
     name: row?.name ?? "",
     address: row?.address ?? "",
+    contactName: row?.contactName ?? "",
     contact: row?.contact ?? "",
     type: (row?.type ?? "Salon") as BizType,
     stage: (row?.stage ?? "New") as Stage,
@@ -45,9 +46,14 @@ export function VisitModal({ row, onClose }: { row: Row | null; onClose: () => v
       <Field label="Business name">
         <input style={inpStyle} value={f.name} onChange={e => set("name", e.target.value)} placeholder="e.g. Dolley Beauty" />
       </Field>
-      <Field label="Address / location">
-        <input style={inpStyle} value={f.address} onChange={e => set("address", e.target.value)} placeholder="e.g. 12 Wilkinson Rd, Freetown" />
-      </Field>
+      <FormRow>
+        <Field label="Owner / contact person">
+          <input style={inpStyle} value={f.contactName} onChange={e => set("contactName", e.target.value)} placeholder="e.g. Mary" />
+        </Field>
+        <Field label="Address / location">
+          <input style={inpStyle} value={f.address} onChange={e => set("address", e.target.value)} placeholder="e.g. 12 Wilkinson Rd" />
+        </Field>
+      </FormRow>
       <FormRow>
         <Field label="Contact number">
           <input style={inpStyle} value={f.contact} onChange={e => set("contact", e.target.value)} placeholder="07…" />
@@ -223,6 +229,7 @@ export function DetailModal({ row, onClose }: { row: Row; onClose: () => void })
           <Tag color={C.green} soft><UserCircle size={13} /> {row.agent}</Tag>
           {row.onboarded && <Tag color={C.greenBright}><CheckCircle2 size={13} /> Onboarded</Tag>}
         </div>
+        <Info icon={UserCircle} label="Owner / contact person" value={row.contactName || "—"} />
         <Info icon={MapPin} label="Address / location" value={row.address || "—"} />
         <Info icon={Phone} label="Contact" value={row.contact} />
         <Info icon={Clock} label="Objection / note" value={row.objection || "—"} />

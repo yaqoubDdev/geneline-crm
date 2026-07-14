@@ -58,6 +58,7 @@ export const businesses = pgTable("businesses", {
     .default(sql`'GX-' || lpad(nextval('gx_seq')::text, 4, '0')`),
   name: text("name").notNull(),
   address: text("address"),
+  contactName: text("contact_name"), // Owner / contact person at prospect stage
   contact: text("contact").notNull(),
   type: businessTypeEnum("type").notNull().default("Salon"),
   stage: stageEnum("stage").notNull().default("New"),

@@ -68,6 +68,7 @@ type SaveInput = {
   dbId?: number;
   name: string;
   address: string;
+  contactName: string;
   contact: string;
   type: BizType;
   stage: Stage;
@@ -125,6 +126,7 @@ export async function saveBusiness(input: SaveInput): Promise<{ error?: string }
   const fields = {
     name: input.name.trim(),
     address: input.address.trim() || null,
+    contactName: input.contactName.trim() || null,
     contact: input.contact.trim(),
     type: input.type,
     stage: input.stage,

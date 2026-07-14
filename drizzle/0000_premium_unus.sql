@@ -8,6 +8,7 @@ CREATE TABLE "businesses" (
 	"code" text DEFAULT 'GX-' || lpad(nextval('gx_seq')::text, 4, '0') NOT NULL,
 	"name" text NOT NULL,
 	"address" text,
+	"contact_name" text,
 	"contact" text NOT NULL,
 	"type" "business_type" DEFAULT 'Salon' NOT NULL,
 	"stage" "stage" DEFAULT 'New' NOT NULL,

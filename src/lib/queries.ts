@@ -9,6 +9,7 @@ const selection = {
   code: businesses.code,
   name: businesses.name,
   address: businesses.address,
+  contactName: businesses.contactName,
   contact: businesses.contact,
   type: businesses.type,
   stage: businesses.stage,
@@ -26,7 +27,7 @@ const selection = {
 };
 
 type RawRow = {
-  dbId: number; code: string; name: string; address: string | null; contact: string;
+  dbId: number; code: string; name: string; address: string | null; contactName: string | null; contact: string;
   type: Row["type"]; stage: Row["stage"]; objection: string | null; lostReason: string | null;
   nextAction: string | null; followUpDate: string | null; monthlyFee: number | null; onboarded: boolean;
   agent: string; accOwner: string | null; accEmail: string | null; accPhone: string | null;
@@ -39,6 +40,7 @@ function normalize(r: RawRow): Row {
     code: r.code,
     name: r.name,
     address: r.address,
+    contactName: r.contactName,
     contact: r.contact,
     type: r.type,
     stage: r.stage,
