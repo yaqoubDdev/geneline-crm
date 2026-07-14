@@ -27,13 +27,13 @@ async function main() {
 
   // --- Businesses (prospect records) from the prototype seed ---
   const rows = [
-    { name: "Chibex Hair", address: "22 Wilkinson Rd, Freetown", contact: "077883025", type: "Salon", stage: "Won", objection: "Price high earlier", lostReason: null, nextAction: "Onboarding Monday", agent: "Fiona", price: 300, onboarded: true },
-    { name: "Beccy Salon", address: "Lumley Beach Rd, Freetown", contact: "077688399", type: "Salon", stage: "Won", objection: "Price high", lostReason: null, nextAction: "Onboarding Wednesday", agent: "Beccy", price: 300, onboarded: false },
-    { name: "Rugcess Beauty Bar", address: "8 Circular Rd, Freetown", contact: "078932350", type: "Salon", stage: "Interested", objection: "Talking to husband tomorrow", lostReason: null, nextAction: "Reach out tomorrow", agent: "Fiona", price: null, onboarded: false },
-    { name: "MU Beauty", address: "Kissy St, Freetown", contact: "075521886", type: "Salon", stage: "Interested", objection: "Discuss as a whole", lostReason: null, nextAction: "Reach this week", agent: "Musu Saffa", price: null, onboarded: false },
-    { name: "Koslain Restaurant", address: "Aberdeen, Freetown", contact: "076360200", type: "Restaurant", stage: "Absent", objection: "Manager absent", lostReason: null, nextAction: "Reach out tomorrow", agent: "Rashida", price: null, onboarded: false },
-    { name: "House of Beauty", address: "Congo Cross, Freetown", contact: "076611021", type: "Salon", stage: "Lost", objection: "Maybe another time", lostReason: "Not interested right now", nextAction: null, agent: "Musu Saffa", price: null, onboarded: false },
-    { name: "MIRAG Beauty", address: "Hill Station, Freetown", contact: "077224981", type: "Salon", stage: "Interested", objection: "Will talk to husband today", lostReason: null, nextAction: "Reach this week", agent: "Fiona", price: null, onboarded: false },
+    { name: "Chibex Hair", address: "22 Wilkinson Rd, Freetown", contact: "077883025", type: "Salon", stage: "Won", objection: "Price high earlier", lostReason: null, nextAction: "Onboarding Monday", followUpDate: null, agent: "Fiona", monthlyFee: 300, onboarded: true },
+    { name: "Beccy Salon", address: "Lumley Beach Rd, Freetown", contact: "077688399", type: "Salon", stage: "Won", objection: "Price high", lostReason: null, nextAction: "Onboarding Wednesday", followUpDate: null, agent: "Beccy", monthlyFee: 300, onboarded: false },
+    { name: "Rugcess Beauty Bar", address: "8 Circular Rd, Freetown", contact: "078932350", type: "Salon", stage: "Interested", objection: "Talking to husband tomorrow", lostReason: null, nextAction: "Reach out tomorrow", followUpDate: "2026-07-14", agent: "Fiona", monthlyFee: null, onboarded: false },
+    { name: "MU Beauty", address: "Kissy St, Freetown", contact: "075521886", type: "Salon", stage: "Interested", objection: "Discuss as a whole", lostReason: null, nextAction: "Reach this week", followUpDate: "2026-07-10", agent: "Musu Saffa", monthlyFee: null, onboarded: false },
+    { name: "Koslain Restaurant", address: "Aberdeen, Freetown", contact: "076360200", type: "Restaurant", stage: "Absent", objection: "Manager absent", lostReason: null, nextAction: "Reach out tomorrow", followUpDate: "2026-07-16", agent: "Rashida", monthlyFee: null, onboarded: false },
+    { name: "House of Beauty", address: "Congo Cross, Freetown", contact: "076611021", type: "Salon", stage: "Lost", objection: "Maybe another time", lostReason: "Not interested right now", nextAction: null, followUpDate: null, agent: "Musu Saffa", monthlyFee: null, onboarded: false },
+    { name: "MIRAG Beauty", address: "Hill Station, Freetown", contact: "077224981", type: "Salon", stage: "Interested", objection: "Will talk to husband today", lostReason: null, nextAction: "Reach this week", followUpDate: "2026-07-13", agent: "Fiona", monthlyFee: null, onboarded: false },
   ] as const;
 
   const insertedBiz = await db
@@ -48,8 +48,9 @@ async function main() {
         objection: r.objection,
         lostReason: r.lostReason,
         nextAction: r.nextAction,
+        followUpDate: r.followUpDate,
         agentId: byName[r.agent],
-        price: r.price,
+        monthlyFee: r.monthlyFee,
         onboarded: r.onboarded,
       }))
     )
@@ -64,6 +65,9 @@ async function main() {
       email: "chibex@mail.com",
       personalPhone: "077883025",
       passwordHash: hash,
+      // Chibex is a live, paying customer — seed as Active so MRR is non-zero.
+      accountStatus: "Active",
+      activatedAt: new Date(),
     });
   }
 

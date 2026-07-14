@@ -4,11 +4,11 @@ import { useEffect, useState, useTransition } from "react";
 import { useActionState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  CheckCircle2, ChevronRight, Clock, DollarSign, KeyRound, Mail, MapPin, Phone, UserCircle, XCircle,
+  CalendarClock, CheckCircle2, ChevronRight, Clock, DollarSign, KeyRound, Mail, MapPin, Phone, UserCircle, XCircle,
 } from "lucide-react";
 import { C, ghostBtn, inpStyle, primaryBtn, STAGES, STAGE_COLOR, TYPES } from "@/lib/theme";
-import type { BizType, Row, Stage } from "@/lib/types";
-import { createAgent, onboardBusiness, saveBusiness } from "@/lib/actions";
+import type { AccountStatus, BizType, Row, Stage } from "@/lib/types";
+import { createAgent, onboardBusiness, saveBusiness, setAccountStatus } from "@/lib/actions";
 import { Field, FormRow, Info, Modal, ModalFooter, Tag, TYPE_ICON } from "./ui";
 
 /* ---------------- VisitModal: add / update a business ---------------- */
@@ -24,6 +24,7 @@ export function VisitModal({ row, onClose }: { row: Row | null; onClose: () => v
     objection: row?.objection ?? "",
     lostReason: row?.lostReason ?? "",
     nextAction: row?.nextAction ?? "",
+    followUpDate: row?.followUpDate ?? "",
   });
   const set = (k: keyof typeof f, v: string) => setF(p => ({ ...p, [k]: v }));
   const valid = f.name.trim() && f.contact.trim();
@@ -74,9 +75,14 @@ export function VisitModal({ row, onClose }: { row: Row | null; onClose: () => v
       <Field label="Objection / note">
         <input style={inpStyle} value={f.objection} onChange={e => set("objection", e.target.value)} placeholder="What's holding them back?" />
       </Field>
-      <Field label="Next action">
-        <input style={inpStyle} value={f.nextAction} onChange={e => set("nextAction", e.target.value)} placeholder="e.g. Reach out Friday" />
-      </Field>
+      <FormRow>
+        <Field label="Next action">
+          <input style={inpStyle} value={f.nextAction} onChange={e => set("nextAction", e.target.value)} placeholder="e.g. Reach out Friday" />
+        </Field>
+        <Field label="Follow up on">
+          <input type="date" style={inpStyle} value={f.followUpDate} onChange={e => set("followUpDate", e.target.value)} />
+        </Field>
+      </FormRow>
       <ModalFooter>
         <button style={ghostBtn} onClick={onClose} disabled={pending}>Cancel</button>
         <button style={{ ...primaryBtn, opacity: valid && !pending ? 1 : .5, pointerEvents: valid && !pending ? "auto" : "none" }}
@@ -90,15 +96,15 @@ export function VisitModal({ row, onClose }: { row: Row | null; onClose: () => v
 export function OnboardModal({ row, onClose }: { row: Row; onClose: () => void }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const defPrice = TYPES.find(t => t.key === row.type)?.price ?? 500;
+  const defFee = TYPES.find(t => t.key === row.type)?.price ?? 500;
   const [a, setA] = useState({ ownerName: "", email: "", personalPhone: row.contact, password: "" });
-  const [price, setPrice] = useState<number>(row.price ?? defPrice);
+  const [fee, setFee] = useState<number>(row.monthlyFee ?? defFee);
   const set = (k: keyof typeof a, v: string) => setA(p => ({ ...p, [k]: v }));
   const valid = a.ownerName.trim() && a.email.trim() && a.password.trim();
 
   const submit = () => {
     start(async () => {
-      await onboardBusiness(row.dbId, a, price);
+      await onboardBusiness(row.dbId, a, fee);
       router.refresh();
       onClose();
     });
@@ -121,8 +127,8 @@ export function OnboardModal({ row, onClose }: { row: Row; onClose: () => void }
       <FormRow>
         <Field label="Password"><input type="password" style={inpStyle} value={a.password}
           onChange={e => set("password", e.target.value)} placeholder="Set login password" /></Field>
-        <Field label="Agreed price (Le)"><input type="number" style={inpStyle} value={price}
-          onChange={e => setPrice(Number(e.target.value))} /></Field>
+        <Field label="Monthly fee (Le/mo)"><input type="number" style={inpStyle} value={fee}
+          onChange={e => setFee(Number(e.target.value))} /></Field>
       </FormRow>
       <ModalFooter>
         <button style={ghostBtn} onClick={onClose} disabled={pending}>Cancel</button>
@@ -188,8 +194,20 @@ export function AddAgentModal({ onClose }: { onClose: () => void }) {
 }
 
 /* ---------------- DetailModal: read-only full record (admin) ---------------- */
+const ACCOUNT_STATUSES: AccountStatus[] = ["Pending", "Active", "Paused", "Churned"];
+const STATUS_COLOR: Record<AccountStatus, string> = {
+  Pending: "#8892A0", Active: C.greenBright, Paused: C.amber, Churned: "#B0483C",
+};
+
 export function DetailModal({ row, onClose }: { row: Row; onClose: () => void }) {
   const Icon = TYPE_ICON[row.type];
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const changeStatus = (s: AccountStatus) =>
+    start(async () => {
+      await setAccountStatus(row.dbId, s);
+      router.refresh();
+    });
   return (
     <Modal onClose={onClose} title={row.name} badge={row.code}>
       <div style={{ display: "grid", gap: 14 }}>
@@ -204,17 +222,37 @@ export function DetailModal({ row, onClose }: { row: Row; onClose: () => void })
         <Info icon={Clock} label="Objection / note" value={row.objection || "—"} />
         {row.stage === "Lost" && <Info icon={XCircle} label="Why lost" value={row.lostReason || "—"} />}
         <Info icon={ChevronRight} label="Next action" value={row.nextAction || "—"} />
-        <Info icon={DollarSign} label="Price" value={row.price != null ? `Le ${row.price}` : "Not set"} />
+        <Info icon={CalendarClock} label="Follow up on" value={row.followUpDate || "—"} />
+        <Info icon={DollarSign} label="Monthly fee" value={row.monthlyFee != null ? `Le ${row.monthlyFee}/mo` : "Not set"} />
 
         {row.onboarded && row.account && (
           <div style={{ marginTop: 4, padding: 16, background: C.paper, borderRadius: 13 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: "uppercase",
-              letterSpacing: ".05em", marginBottom: 12 }}>Account details</div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: "uppercase",
+                letterSpacing: ".05em" }}>Account details</div>
+              <Tag color={STATUS_COLOR[row.account.status]}>{row.account.status}</Tag>
+            </div>
             <div style={{ display: "grid", gap: 10 }}>
               <Info icon={UserCircle} label="Owner" value={row.account.ownerName} />
               <Info icon={Mail} label="Email" value={row.account.email} />
               <Info icon={Phone} label="Personal phone" value={row.account.personalPhone || "—"} />
               <Info icon={KeyRound} label="Password" value="••••••" />
+            </div>
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 11.5, color: C.muted, fontWeight: 500, marginBottom: 6 }}>Customer status</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {ACCOUNT_STATUSES.map(s => {
+                  const active = row.account!.status === s;
+                  return (
+                    <button key={s} onClick={() => changeStatus(s)} disabled={pending || active} style={{
+                      padding: "7px 12px", borderRadius: 9, fontSize: 12.5, fontWeight: 600,
+                      cursor: pending || active ? "default" : "pointer", fontFamily: "inherit",
+                      border: `1.5px solid ${active ? STATUS_COLOR[s] : C.line}`,
+                      background: active ? STATUS_COLOR[s] : "#fff",
+                      color: active ? "#fff" : C.muted, opacity: pending && !active ? .5 : 1 }}>{s}</button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}

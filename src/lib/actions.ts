@@ -7,7 +7,7 @@ import { AuthError } from "next-auth";
 import { auth, signIn, signOut } from "@/auth";
 import { db } from "@/db";
 import { businesses, onboardingAccounts, users } from "@/db/schema";
-import type { BizType, Stage } from "@/lib/types";
+import type { AccountStatus, BizType, Stage } from "@/lib/types";
 
 /* ---------------- Auth ---------------- */
 export async function authenticate(
@@ -74,6 +74,7 @@ type SaveInput = {
   objection: string;
   lostReason: string;
   nextAction: string;
+  followUpDate: string; // YYYY-MM-DD or ""
 };
 
 async function loadOwned(dbId: number, userId: number, isAdmin: boolean) {
@@ -99,6 +100,7 @@ export async function saveBusiness(input: SaveInput) {
     // Lost reason only applies to Lost deals; clear it otherwise.
     lostReason: input.stage === "Lost" ? input.lostReason.trim() || null : null,
     nextAction: input.nextAction.trim() || null,
+    followUpDate: input.followUpDate || null,
   };
 
   if (input.dbId) {
@@ -120,7 +122,7 @@ type OnboardInput = {
   password: string;
 };
 
-export async function onboardBusiness(dbId: number, account: OnboardInput, price: number) {
+export async function onboardBusiness(dbId: number, account: OnboardInput, monthlyFee: number) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
   const userId = Number(session.user.id);
@@ -129,6 +131,7 @@ export async function onboardBusiness(dbId: number, account: OnboardInput, price
 
   const passwordHash = await bcrypt.hash(account.password, 10);
 
+  // New accounts start Pending until the admin confirms the customer is live.
   await db
     .insert(onboardingAccounts)
     .values({
@@ -150,9 +153,41 @@ export async function onboardBusiness(dbId: number, account: OnboardInput, price
 
   await db
     .update(businesses)
-    .set({ onboarded: true, stage: "Won", price })
+    .set({ onboarded: true, stage: "Won", monthlyFee })
     .where(eq(businesses.id, dbId));
 
   revalidatePath("/agent");
+  revalidatePath("/admin");
+}
+
+/* ---------------- Admin: customer lifecycle ---------------- */
+export async function setAccountStatus(dbId: number, status: AccountStatus) {
+  const session = await auth();
+  if (session?.user?.role !== "admin") throw new Error("Only admins can change customer status.");
+
+  const set: {
+    accountStatus: AccountStatus;
+    activatedAt?: Date | null;
+    churnedAt?: Date | null;
+  } = { accountStatus: status };
+
+  // Stamp activation the first time it goes Active; stamp/clear churn accordingly.
+  if (status === "Active") {
+    const [acc] = await db
+      .select({ activatedAt: onboardingAccounts.activatedAt })
+      .from(onboardingAccounts)
+      .where(eq(onboardingAccounts.businessId, dbId))
+      .limit(1);
+    if (acc && !acc.activatedAt) set.activatedAt = new Date();
+    set.churnedAt = null;
+  } else if (status === "Churned") {
+    set.churnedAt = new Date();
+  }
+
+  await db
+    .update(onboardingAccounts)
+    .set(set)
+    .where(eq(onboardingAccounts.businessId, dbId));
+
   revalidatePath("/admin");
 }

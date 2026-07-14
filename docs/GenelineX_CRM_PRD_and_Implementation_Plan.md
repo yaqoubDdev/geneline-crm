@@ -10,9 +10,10 @@ Product Requirements Document  &  Implementation Plan
 | **Field** | **Detail** |
 | - | - |
 | **Document** | **PRD + Implementation Plan** |
-| **Version** | **1.1 (Draft)** |
+| **Version** | **1.2 (Draft)** |
 | **Date** | **14 July 2026** |
 | **Revision 1.1** | **Split Closed → Won / Lost (+ lost_reason); added business address field** |
+| **Revision 1.2** | **Recurring revenue (monthly_fee + MRR); post-onboarding lifecycle (Active/Paused/Churned + churn); structured follow-up dates with due/overdue view** |
 | **Owner** | **Diallo — Product / Admin** |
 | **Status** | **For team review** |
 
@@ -89,9 +90,10 @@ Created on the first field visit. Business ID is auto-generated (format **GX-000
 | **stage** | **enum** | **New / Interested / Reluctant / Absent / Won / Lost** |
 | **objection** | **text** | **What's holding them back / notes** |
 | **lost\_reason** | **text** | **Why the deal died (only when stage = Lost) — price, competitor, not interested, unreachable …** |
-| **next\_action** | **text** | **e.g. 'Reach out Friday'** |
+| **next\_action** | **text** | **What to do next — e.g. 'Reach out Friday'** |
+| **follow\_up\_date** | **date** | **When to do it — powers the 'due today / overdue' view (v1.2)** |
 | **agent** | **ref** | **Owning agent (the person who logged it)** |
-| **price** | **number** | **Agreed price in Le (set when Won)** |
+| **monthly\_fee** | **number** | **Agreed recurring fee in Le / month (set when Won). Replaces one-off 'price' (v1.2)** |
 | **created\_at** | **timestamp** | **Auto** |
 
 ## **4.2  Onboarding account (linked record)**
@@ -105,8 +107,25 @@ Created only when a deal is **Won**. Linked to the business by the same Business
 | **email** | **text** | **Login email** |
 | **personal\_phone** | **text** | **Owner's personal number** |
 | **password** | **secret** | **Hashed — never stored in plain text** |
-| **onboarded\_at** | **timestamp** | **Auto** |
-| **On pricing:  **price lives on the business record because it's agreed during the sale. Defaults follow type (Salon Le500, Corporate Le1500) but the agent can override at closing — e.g. the Chibex deal that closed at Le300. |
+| **onboarded\_at** | **timestamp** | **Auto — account created** |
+| **account\_status** | **enum** | **Pending / Active / Paused / Churned — starts Pending at onboarding until the admin confirms the customer is live (v1.2)** |
+| **activated\_at** | **timestamp** | **When the admin marks the customer Active & billing starts (v1.2)** |
+| **churned\_at** | **timestamp** | **When the customer cancelled, if churned (v1.2)** |
+| **On pricing — it's a subscription, not a one-off:  **the fee is a recurring monthly charge (Salon Le500/mo, Corporate Le1500/mo; agent can override at close — e.g. Chibex at Le300/mo). It lives on the business record as `monthly_fee` because it's agreed during the sale. The number the business actually runs on is **MRR** — the sum of `monthly_fee` across *Active* customers — not a lump sum of every deal ever closed. |
+
+## **4.3  Subscription, MRR & customer lifecycle  (v1.2)**
+
+Onboarding creates the account — it is the **start** of the revenue, not the end. A won deal becomes a paying customer only once it is **Active**, and it can later **Pause** or **Churn**. The CRM tracks this so the admin sees *living* revenue, not a historical tally.
+
+| **Concept** | **Definition** |
+| - | - |
+| **MRR (monthly recurring revenue)** | **Sum of `monthly_fee` across all Active customers** |
+| **Pending** | **Onboarded but not yet confirmed live — not billing, not in MRR** |
+| **Active** | **Live and billing — the admin has confirmed the customer is running** |
+| **Paused** | **Temporarily suspended — not billing, not churned** |
+| **Churned** | **Cancelled — excluded from MRR; `churned_at` recorded** |
+| **Churn rate** | **Customers churned this month ÷ Active at start of month** |
+| **Key shift:  **v1 summed a one-off 'price' into 'total revenue', which both overstates the business and freezes it in time. v1.2 replaces that with MRR plus active / paused / churned counts, so the headline number moves with the actual customer base. |
 
 # **5  Features & requirements**
 
@@ -128,15 +147,19 @@ Created only when a deal is **Won**. Linked to the business by the same Business
 
 - **Update a business: **change stage, objection, or next action after a follow-up visit. Marking a business **Lost** prompts for a lost reason.
 
-- **Onboard a won deal: **when stage = Won, an Onboard action opens the account form (owner, email, phone, password, agreed price).
+- **Onboard a won deal: **when stage = Won, an Onboard action opens the account form (owner, email, phone, password, agreed monthly fee).
+
+- **Follow-ups (v1.2): **each business can carry a follow-up date. The pipeline surfaces **Due today** and **Overdue** groups at the top so agents chase leads on time (an in-app due list, not push notifications).
 
 ## **5.3  Admin — dashboard**
 
-- Company overview: total businesses, deals won, conversion rate, total revenue, onboarded count.
+- Company overview: total businesses, deals won, conversion rate, **MRR**, active customers, churned count (v1.2 replaces the old lump-sum 'total revenue').
 
-- Agent leaderboard: per-agent logged / won / revenue, ranked.
+- Agent leaderboard: per-agent logged / won / MRR contributed, ranked.
 
 - Pipeline by stage: distribution across New → Won, with Lost shown separately (plus a breakdown of lost reasons).
+
+- **Retention (v1.2): **active vs paused vs churned customers, MRR trend, and churn rate — the health of the paying base, not just the sales funnel.
 
 - **All businesses view: **every record across all agents, filterable by type and by agent, searchable by name.
 
@@ -256,6 +279,26 @@ Work is phased so the team gets a usable tool early and richer analytics follow.
 
 Dennis's idea, deferred until v1 is stable. An agent sends business details over WhatsApp and a bot writes them into the same database this app reads from. It's an input channel on top of the existing data model, not a change to it — which is exactly why the shared database matters.
 
+## **Phase 7 — Follow-up dates & due view  ·  ~2 days  (v1.2)**
+
+19. Add a structured `follow_up_date` to each business (alongside the free-text next action).
+
+20. Add **Due today** and **Overdue** groups to the top of the agent pipeline; allow sort/filter by follow-up date.
+
+**Done when: **an agent opens the app and immediately sees who to chase today. (In-app due list only — push/WhatsApp reminders come later.)
+
+## **Phase 8 — Recurring revenue & lifecycle  ·  ~4 days  (v1.2)**
+
+21. Rename `price` → `monthly_fee`; treat the agreed fee as a recurring monthly charge.
+
+22. Add `account_status` (Active / Paused / Churned) with `activated_at` / `churned_at`; let the admin change a customer's status.
+
+23. Replace 'total revenue' on the dashboard with **MRR**, active-customer count, and churn; add a retention view.
+
+**Done when: **the dashboard shows living MRR and the admin can mark a customer paused or churned.
+
+*Priority note: Phases 7 – 8 are v1.2 enhancements that should land right after Phase 5 (before the Phase 6 WhatsApp add-on), because they change the data model and directly serve conversion and revenue.*
+
 # **9  Timeline summary**
 
 | **Phase** | **Focus** | **Est.** | **Output** |
@@ -266,9 +309,11 @@ Dennis's idea, deferred until v1 is stable. An agent sends business details over
 | **3** | **Onboarding** | **3 d** | **Linked account records** |
 | **4** | **Admin dashboard** | **4 d** | **Full company visibility** |
 | **5** | **Corporate & polish** | **2 d** | **Team live, old doc retired** |
+| **7** | **Follow-up dates & due view** | **2 d** | **Agents chase leads on time (v1.2)** |
+| **8** | **Recurring revenue & lifecycle** | **4 d** | **Living MRR + churn on the dashboard (v1.2)** |
 | **6** | **WhatsApp logging** | **later** | **Bot input channel** |
 
-Core build (phases 0–5): roughly **3.5 weeks** of focused work for one developer. Phase 6 follows once the core is proven.
+Core build (phases 0–5): roughly **3.5 weeks** of focused work for one developer. Phases 7 – 8 (v1.2) add about **1.5 weeks** and should land before the Phase 6 WhatsApp add-on, which follows once the core is proven.
 
 # **10  Risks & mitigations**
 

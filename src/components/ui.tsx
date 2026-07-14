@@ -97,7 +97,7 @@ export function BizCard({
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
         <Tag color={STAGE_COLOR[r.stage]}>{r.stage}</Tag>
         {showAgent && <span style={{ fontSize: 11.5, color: C.muted }}>{r.agent}</span>}
-        {r.price != null && <span style={{ fontSize: 12, fontWeight: 700, color: C.green }}>Le {r.price}</span>}
+        {r.monthlyFee != null && <span style={{ fontSize: 12, fontWeight: 700, color: C.green }}>Le {r.monthlyFee}/mo</span>}
       </div>
       {onOnboard && (
         <button onClick={e => { e.stopPropagation(); onOnboard(); }} style={{ flexShrink: 0,

@@ -1,5 +1,5 @@
 {
-  "id": "f66c7ef0-104f-4113-817d-9c12039e643d",
+  "id": "47e72ad2-5e46-4600-9441-badb0db07732",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -73,14 +73,20 @@
           "primaryKey": false,
           "notNull": false
         },
+        "follow_up_date": {
+          "name": "follow_up_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
         "agent_id": {
           "name": "agent_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
-        "price": {
-          "name": "price",
+        "monthly_fee": {
+          "name": "monthly_fee",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
@@ -170,6 +176,26 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "account_status": {
+          "name": "account_status",
+          "type": "account_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Pending'"
+        },
+        "activated_at": {
+          "name": "activated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "churned_at": {
+          "name": "churned_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -256,6 +282,16 @@
     }
   },
   "enums": {
+    "public.account_status": {
+      "name": "account_status",
+      "schema": "public",
+      "values": [
+        "Pending",
+        "Active",
+        "Paused",
+        "Churned"
+      ]
+    },
     "public.business_type": {
       "name": "business_type",
       "schema": "public",

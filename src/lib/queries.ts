@@ -15,19 +15,22 @@ const selection = {
   objection: businesses.objection,
   lostReason: businesses.lostReason,
   nextAction: businesses.nextAction,
-  price: businesses.price,
+  followUpDate: businesses.followUpDate,
+  monthlyFee: businesses.monthlyFee,
   onboarded: businesses.onboarded,
   agent: users.name,
   accOwner: onboardingAccounts.ownerName,
   accEmail: onboardingAccounts.email,
   accPhone: onboardingAccounts.personalPhone,
+  accStatus: onboardingAccounts.accountStatus,
 };
 
 type RawRow = {
   dbId: number; code: string; name: string; address: string | null; contact: string;
   type: Row["type"]; stage: Row["stage"]; objection: string | null; lostReason: string | null;
-  nextAction: string | null; price: number | null; onboarded: boolean;
+  nextAction: string | null; followUpDate: string | null; monthlyFee: number | null; onboarded: boolean;
   agent: string; accOwner: string | null; accEmail: string | null; accPhone: string | null;
+  accStatus: NonNullable<Row["account"]>["status"] | null;
 };
 
 function normalize(r: RawRow): Row {
@@ -42,12 +45,13 @@ function normalize(r: RawRow): Row {
     objection: r.objection,
     lostReason: r.lostReason,
     nextAction: r.nextAction,
+    followUpDate: r.followUpDate,
     agent: r.agent,
-    price: r.price,
+    monthlyFee: r.monthlyFee,
     onboarded: r.onboarded,
     // Never expose the password hash to the client.
     account: r.accOwner
-      ? { ownerName: r.accOwner, email: r.accEmail ?? "", personalPhone: r.accPhone }
+      ? { ownerName: r.accOwner, email: r.accEmail ?? "", personalPhone: r.accPhone, status: r.accStatus ?? "Pending" }
       : null,
   };
 }

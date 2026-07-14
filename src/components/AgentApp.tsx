@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, CheckCircle2, Plus, TrendingUp } from "lucide-react";
+import { Building2, CalendarClock, CheckCircle2, Plus, TrendingUp } from "lucide-react";
 import { C, h1Style, pageStyle, primaryBtn } from "@/lib/theme";
 import type { Row } from "@/lib/types";
 import { signOutAction } from "@/lib/actions";
@@ -19,6 +19,17 @@ export default function AgentApp({ rows, agentName }: { rows: Row[]; agentName: 
     interested: rows.filter(r => r.stage === "Interested").length,
     won: rows.filter(r => r.stage === "Won").length,
   };
+
+  // Follow-ups: open (not onboarded, not dead) businesses with a due date.
+  const today = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
+  const openWithDate = rows.filter(r => !r.onboarded && r.stage !== "Lost" && r.followUpDate);
+  const overdue = openWithDate
+    .filter(r => r.followUpDate! < today)
+    .sort((a, b) => a.followUpDate!.localeCompare(b.followUpDate!));
+  const dueToday = openWithDate.filter(r => r.followUpDate === today);
+
+  const onboardOf = (r: typeof rows[number]) =>
+    r.stage === "Won" && !r.onboarded ? () => setOnboard(r) : null;
 
   return (
     <>
@@ -42,6 +53,19 @@ export default function AgentApp({ rows, agentName }: { rows: Row[]; agentName: 
           <Stat label="Won" value={stats.won} icon={CheckCircle2} tint={C.greenBright} />
         </div>
 
+        {(overdue.length > 0 || dueToday.length > 0) && (
+          <div style={{ display: "grid", gap: 14, marginBottom: 20 }}>
+            {overdue.length > 0 && (
+              <DueSection title="Overdue" count={overdue.length} color="#B0483C"
+                rows={overdue} onOpen={setEditing} onboardOf={onboardOf} />
+            )}
+            {dueToday.length > 0 && (
+              <DueSection title="Due today" count={dueToday.length} color={C.amber}
+                rows={dueToday} onOpen={setEditing} onboardOf={onboardOf} />
+            )}
+          </div>
+        )}
+
         <SearchBar q={q} setQ={setQ} placeholder="Search my businesses…" />
 
         <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
@@ -56,5 +80,33 @@ export default function AgentApp({ rows, agentName }: { rows: Row[]; agentName: 
       {editing && <VisitModal row={editing === "new" ? null : editing} onClose={() => setEditing(null)} />}
       {onboard && <OnboardModal row={onboard} onClose={() => setOnboard(null)} />}
     </>
+  );
+}
+
+function DueSection({
+  title, count, color, rows, onOpen, onboardOf,
+}: {
+  title: string;
+  count: number;
+  color: string;
+  rows: Row[];
+  onOpen: (r: Row) => void;
+  onboardOf: (r: Row) => (() => void) | null;
+}) {
+  return (
+    <div style={{ background: C.card, border: `1px solid ${color}44`, borderLeft: `4px solid ${color}`,
+      borderRadius: 14, padding: "14px 16px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <CalendarClock size={16} style={{ color }} />
+        <span style={{ fontWeight: 700, fontSize: 14, color: C.ink }}>{title}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: color,
+          padding: "1px 8px", borderRadius: 20 }}>{count}</span>
+      </div>
+      <div style={{ display: "grid", gap: 10 }}>
+        {rows.map(r => (
+          <BizCard key={r.dbId} r={r} onClick={() => onOpen(r)} onOnboard={onboardOf(r)} />
+        ))}
+      </div>
+    </div>
   );
 }

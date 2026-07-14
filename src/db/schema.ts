@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  date,
   integer,
   pgEnum,
   pgSequence,
@@ -24,6 +25,12 @@ export const stageEnum = pgEnum("stage", [
   "Absent",
   "Won",
   "Lost",
+]);
+export const accountStatusEnum = pgEnum("account_status", [
+  "Pending",
+  "Active",
+  "Paused",
+  "Churned",
 ]);
 
 /* ---------- Business ID sequence: drives the GX-0001 code ---------- */
@@ -57,10 +64,11 @@ export const businesses = pgTable("businesses", {
   objection: text("objection"),
   lostReason: text("lost_reason"),
   nextAction: text("next_action"),
+  followUpDate: date("follow_up_date"), // When to next act — powers due/overdue
   agentId: integer("agent_id")
     .notNull()
     .references(() => users.id, { onDelete: "restrict" }),
-  price: integer("price"), // Agreed price in Le, set at close
+  monthlyFee: integer("monthly_fee"), // Agreed recurring fee in Le/month, set when Won
   onboarded: boolean("onboarded").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
@@ -79,6 +87,10 @@ export const onboardingAccounts = pgTable("onboarding_accounts", {
   onboardedAt: timestamp("onboarded_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  // Customer lifecycle after onboarding. Starts Pending until the admin confirms live.
+  accountStatus: accountStatusEnum("account_status").notNull().default("Pending"),
+  activatedAt: timestamp("activated_at", { withTimezone: true }),
+  churnedAt: timestamp("churned_at", { withTimezone: true }),
 });
 
 export type User = typeof users.$inferSelect;

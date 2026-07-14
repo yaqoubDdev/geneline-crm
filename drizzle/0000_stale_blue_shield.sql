@@ -1,3 +1,4 @@
+CREATE TYPE "public"."account_status" AS ENUM('Pending', 'Active', 'Paused', 'Churned');--> statement-breakpoint
 CREATE TYPE "public"."business_type" AS ENUM('Salon', 'Restaurant', 'Corporate');--> statement-breakpoint
 CREATE TYPE "public"."role" AS ENUM('agent', 'admin');--> statement-breakpoint
 CREATE TYPE "public"."stage" AS ENUM('New', 'Interested', 'Reluctant', 'Absent', 'Won', 'Lost');--> statement-breakpoint
@@ -13,8 +14,9 @@ CREATE TABLE "businesses" (
 	"objection" text,
 	"lost_reason" text,
 	"next_action" text,
+	"follow_up_date" date,
 	"agent_id" integer NOT NULL,
-	"price" integer,
+	"monthly_fee" integer,
 	"onboarded" boolean DEFAULT false NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "businesses_code_unique" UNIQUE("code")
@@ -26,7 +28,10 @@ CREATE TABLE "onboarding_accounts" (
 	"email" text NOT NULL,
 	"personal_phone" text,
 	"password_hash" text NOT NULL,
-	"onboarded_at" timestamp with time zone DEFAULT now() NOT NULL
+	"onboarded_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"account_status" "account_status" DEFAULT 'Pending' NOT NULL,
+	"activated_at" timestamp with time zone,
+	"churned_at" timestamp with time zone
 );
 --> statement-breakpoint
 CREATE TABLE "users" (

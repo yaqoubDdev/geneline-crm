@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
-  Building2, CheckCircle2, DollarSign, LayoutDashboard, Mail, Plus, TrendingUp, Users, UserCircle,
+  Building2, CheckCircle2, DollarSign, LayoutDashboard, Mail, Plus, TrendingUp, Users, UserCircle, UserX,
 } from "lucide-react";
 import { C, h1Style, pageStyle, primaryBtn, STAGE_COLOR, STAGES, TYPES } from "@/lib/theme";
 import type { Row } from "@/lib/types";
@@ -11,6 +11,10 @@ import { BizCard, Empty, NavBtn, Panel, SearchBar, Select, Stat, TopBar } from "
 import { AddAgentModal, DetailModal } from "./Modals";
 
 type AgentInfo = { id: number; name: string; email: string };
+
+const STATUS_TINT: Record<string, string> = {
+  Pending: "#8892A0", Active: C.greenBright, Paused: C.amber, Churned: "#B0483C",
+};
 
 export default function AdminApp({
   rows, agentList, adminName,
@@ -25,14 +29,16 @@ export default function AdminApp({
 
   const m = useMemo(() => {
     const won = rows.filter(r => r.stage === "Won");
-    const revenue = won.reduce((s, r) => s + (r.price || 0), 0);
+    // MRR = sum of monthly_fee across Active customers only.
+    const isActive = (r: Row) => r.account?.status === "Active";
+    const mrr = rows.filter(isActive).reduce((s, r) => s + (r.monthlyFee || 0), 0);
     const byAgent = agents.map(a => {
       const rs = rows.filter(r => r.agent === a);
       return {
         agent: a, total: rs.length, won: rs.filter(r => r.stage === "Won").length,
-        revenue: rs.filter(r => r.stage === "Won").reduce((s, r) => s + (r.price || 0), 0),
+        mrr: rs.filter(isActive).reduce((s, r) => s + (r.monthlyFee || 0), 0),
       };
-    }).sort((x, y) => y.won - x.won);
+    }).sort((x, y) => y.mrr - x.mrr || y.won - x.won);
     const byStage = STAGES.map(s => ({ stage: s, n: rows.filter(r => r.stage === s).length }));
     const lostReasons = Object.entries(
       rows.filter(r => r.stage === "Lost").reduce<Record<string, number>>((acc, r) => {
@@ -41,11 +47,15 @@ export default function AdminApp({
         return acc;
       }, {})
     ).sort((a, b) => b[1] - a[1]);
+    const count = (st: string) => rows.filter(r => r.account?.status === st).length;
+    const lifecycle = { Pending: count("Pending"), Active: count("Active"), Paused: count("Paused"), Churned: count("Churned") };
+    const churnDenom = lifecycle.Active + lifecycle.Paused + lifecycle.Churned;
+    const churnRate = churnDenom ? Math.round(lifecycle.Churned / churnDenom * 100) : 0;
     return {
-      total: rows.length, won: won.length, revenue,
+      total: rows.length, won: won.length, mrr,
       onboarded: rows.filter(r => r.onboarded).length,
       convRate: rows.length ? Math.round(won.length / rows.length * 100) : 0,
-      byAgent, byStage, lostReasons,
+      byAgent, byStage, lostReasons, lifecycle, churnRate,
     };
   }, [rows, agents]);
 
@@ -74,8 +84,9 @@ export default function AdminApp({
               <Stat label="Total businesses" value={m.total} icon={Building2} tint={C.green} big />
               <Stat label="Deals won" value={m.won} icon={CheckCircle2} tint={C.greenBright} big />
               <Stat label="Conversion" value={m.convRate + "%"} icon={TrendingUp} tint={C.amber} big />
-              <Stat label="Revenue (Le)" value={m.revenue.toLocaleString()} icon={DollarSign} tint={C.ink} big />
-              <Stat label="Onboarded" value={m.onboarded} icon={UserCircle} tint={C.clay} big />
+              <Stat label="MRR (Le/mo)" value={m.mrr.toLocaleString()} icon={DollarSign} tint={C.ink} big />
+              <Stat label="Active customers" value={m.lifecycle.Active} icon={UserCircle} tint={C.greenBright} big />
+              <Stat label="Churned" value={m.lifecycle.Churned} icon={UserX} tint={C.clay} big />
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 16 }}>
@@ -91,7 +102,7 @@ export default function AdminApp({
                         <div style={{ fontSize: 12, color: C.muted }}>{a.total} logged · {a.won} won</div>
                       </div>
                       <div style={{ textAlign: "right" }}>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: C.green }}>Le {a.revenue.toLocaleString()}</div>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: C.green }}>Le {a.mrr.toLocaleString()}/mo</div>
                       </div>
                     </div>
                   ))}
@@ -114,6 +125,25 @@ export default function AdminApp({
                       </div>
                     );
                   })}
+                </div>
+              </Panel>
+            </div>
+
+            <div style={{ marginTop: 16 }}>
+              <Panel title="Customer retention">
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {(["Active", "Pending", "Paused", "Churned"] as const).map(st => (
+                    <div key={st} style={{ flex: "1 1 110px", background: C.paper, borderRadius: 11, padding: "12px 14px" }}>
+                      <div style={{ fontSize: 12.5, color: C.muted }}>{st}</div>
+                      <div style={{ fontFamily: "'Archivo',sans-serif", fontWeight: 800, fontSize: 24,
+                        color: STATUS_TINT[st], marginTop: 2 }}>{m.lifecycle[st]}</div>
+                    </div>
+                  ))}
+                  <div style={{ flex: "1 1 110px", background: C.paper, borderRadius: 11, padding: "12px 14px" }}>
+                    <div style={{ fontSize: 12.5, color: C.muted }}>Churn</div>
+                    <div style={{ fontFamily: "'Archivo',sans-serif", fontWeight: 800, fontSize: 24,
+                      color: "#B0483C", marginTop: 2 }}>{m.churnRate}%</div>
+                  </div>
                 </div>
               </Panel>
             </div>
@@ -169,7 +199,7 @@ export default function AdminApp({
               {agentList.map(a => {
                 const rs = rows.filter(r => r.agent === a.name);
                 const won = rs.filter(r => r.stage === "Won").length;
-                const revenue = rs.filter(r => r.stage === "Won").reduce((s, r) => s + (r.price || 0), 0);
+                const mrr = rs.filter(r => r.account?.status === "Active").reduce((s, r) => s + (r.monthlyFee || 0), 0);
                 return (
                   <div key={a.id} style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 14,
                     padding: "15px 17px", display: "flex", alignItems: "center", gap: 14 }}>
@@ -183,7 +213,7 @@ export default function AdminApp({
                     </div>
                     <div style={{ textAlign: "right", flexShrink: 0 }}>
                       <div style={{ fontSize: 12.5, color: C.muted }}>{rs.length} logged · {won} won</div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: C.green, marginTop: 2 }}>Le {revenue.toLocaleString()}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: C.green, marginTop: 2 }}>Le {mrr.toLocaleString()}/mo</div>
                     </div>
                   </div>
                 );
