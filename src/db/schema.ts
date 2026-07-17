@@ -32,6 +32,13 @@ export const accountStatusEnum = pgEnum("account_status", [
   "Paused",
   "Churned",
 ]);
+export const auditActionEnum = pgEnum("audit_action", [
+  "create_business",
+  "update_business",
+  "onboard_business",
+  "account_status_change",
+  "create_user",
+]);
 
 /* ---------- Business ID sequence: drives the GX-0001 code ---------- */
 export const gxSeq = pgSequence("gx_seq", { startWith: 1, increment: 1 });
@@ -94,6 +101,27 @@ export const onboardingAccounts = pgTable("onboarding_accounts", {
   churnedAt: timestamp("churned_at", { withTimezone: true }),
 });
 
+/* ---------- Audit log: who did what, when — powers monitoring + daily quota ---------- */
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  // Actor. SET NULL on user delete so the trail survives; actorName keeps it readable.
+  userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+  actorName: text("actor_name").notNull(),
+  action: auditActionEnum("action").notNull(),
+  // Subject business (nullable for user-management events). Denormalized code/name
+  // so a deleted business still reads clearly in the log.
+  businessId: integer("business_id").references(() => businesses.id, {
+    onDelete: "set null",
+  }),
+  businessCode: text("business_code"),
+  businessName: text("business_name"),
+  details: text("details"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export type User = typeof users.$inferSelect;
+export type AuditLog = typeof auditLogs.$inferSelect;
 export type Business = typeof businesses.$inferSelect;
 export type OnboardingAccount = typeof onboardingAccounts.$inferSelect;

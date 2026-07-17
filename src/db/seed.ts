@@ -11,16 +11,18 @@ const DEMO_PASSWORD = "demo1234";
 async function main() {
   const hash = await bcrypt.hash(DEMO_PASSWORD, 10);
 
-  // --- Users: admin + demo agents + an "Unassigned" bucket agent that owns the
-  //     imported field records until real agents exist and reassignment is built. ---
+  // --- Users: a secure admin + 4 field agents + an "Unassigned" bucket agent that
+  //     owns the imported field records until they're reassigned to real agents.
+  //     NOTE: this demo password is for fresh dev installs only. On the live DB the
+  //     accounts are (re)created by reset-agents.ts with strong random passwords. ---
   const seededUsers = await db
     .insert(users)
     .values([
-      { name: "Diallo", email: "diallo@geneline-x.com", passwordHash: hash, role: "admin" },
-      { name: "Fiona", email: "fiona@geneline-x.com", passwordHash: hash, role: "agent" },
-      { name: "Beccy", email: "beccy@geneline-x.com", passwordHash: hash, role: "agent" },
-      { name: "Musu Saffa", email: "musu@geneline-x.com", passwordHash: hash, role: "agent" },
-      { name: "Rashida", email: "rashida@geneline-x.com", passwordHash: hash, role: "agent" },
+      { name: "Admin", email: "admin@geneline-x.com", passwordHash: hash, role: "admin" },
+      { name: "Agent 1", email: "agent1@geneline-x.com", passwordHash: hash, role: "agent" },
+      { name: "Agent 2", email: "agent2@geneline-x.com", passwordHash: hash, role: "agent" },
+      { name: "Agent 3", email: "agent3@geneline-x.com", passwordHash: hash, role: "agent" },
+      { name: "Agent 4", email: "agent4@geneline-x.com", passwordHash: hash, role: "agent" },
       { name: "Unassigned", email: "unassigned@geneline-x.com", passwordHash: hash, role: "agent" },
     ])
     .returning();
