@@ -1,8 +1,12 @@
 import "server-only";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { businesses, onboardingAccounts, users } from "@/db/schema";
+import { auditLogs, businesses, onboardingAccounts, users } from "@/db/schema";
 import type { Row } from "@/lib/types";
+
+/** Businesses each agent must "talk to" per day. */
+export const DAILY_TARGET = 15;
+const UNASSIGNED_EMAIL = "unassigned@geneline-x.com";
 
 const selection = {
   dbId: businesses.id,
@@ -90,4 +94,95 @@ export async function getAgents(): Promise<AgentInfo[]> {
     .from(users)
     .where(eq(users.role, "agent"))
     .orderBy(users.name);
+}
+
+/* ---------------- Activity monitoring + daily quota ---------------- */
+
+// A business "touched" today = created or updated today (distinct businesses).
+// SLE runs on UTC, so `current_date` (UTC midnight) is the local day boundary.
+const touchedTodayExpr = sql<number>`count(distinct ${auditLogs.businessId}) filter (
+  where ${auditLogs.action} in ('create_business', 'update_business')
+)`;
+const createdTodayExpr = sql<number>`count(distinct ${auditLogs.businessId}) filter (
+  where ${auditLogs.action} = 'create_business'
+)`;
+
+export type AgentProgress = {
+  id: number;
+  name: string;
+  touchedToday: number; // distinct businesses talked to today
+  createdToday: number; // of those, newly added today
+  target: number;
+  metTarget: boolean;
+};
+
+/** Per-agent progress against the daily quota (admin monitoring). */
+export async function getAgentDailyProgress(): Promise<AgentProgress[]> {
+  const rows = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      touchedToday: touchedTodayExpr,
+      createdToday: createdTodayExpr,
+    })
+    .from(users)
+    .leftJoin(
+      auditLogs,
+      and(eq(auditLogs.userId, users.id), sql`${auditLogs.createdAt} >= current_date`)
+    )
+    .where(and(eq(users.role, "agent"), ne(users.email, UNASSIGNED_EMAIL)))
+    .groupBy(users.id, users.name)
+    .orderBy(users.name);
+
+  return rows.map((r) => {
+    const touchedToday = Number(r.touchedToday);
+    return {
+      id: r.id,
+      name: r.name,
+      touchedToday,
+      createdToday: Number(r.createdToday),
+      target: DAILY_TARGET,
+      metTarget: touchedToday >= DAILY_TARGET,
+    };
+  });
+}
+
+/** A single agent's own progress today (for their dashboard). */
+export async function getProgressForAgent(agentId: number) {
+  const [row] = await db
+    .select({ touchedToday: touchedTodayExpr, createdToday: createdTodayExpr })
+    .from(auditLogs)
+    .where(and(eq(auditLogs.userId, agentId), sql`${auditLogs.createdAt} >= current_date`));
+  return {
+    touchedToday: Number(row?.touchedToday ?? 0),
+    createdToday: Number(row?.createdToday ?? 0),
+    target: DAILY_TARGET,
+  };
+}
+
+export type AuditEntry = {
+  id: number;
+  actorName: string;
+  action: string;
+  businessCode: string | null;
+  businessName: string | null;
+  details: string | null;
+  createdAt: Date;
+};
+
+/** Recent activity feed (admin monitoring). */
+export async function getRecentAudit(limit = 60): Promise<AuditEntry[]> {
+  return db
+    .select({
+      id: auditLogs.id,
+      actorName: auditLogs.actorName,
+      action: auditLogs.action,
+      businessCode: auditLogs.businessCode,
+      businessName: auditLogs.businessName,
+      details: auditLogs.details,
+      createdAt: auditLogs.createdAt,
+    })
+    .from(auditLogs)
+    .orderBy(desc(auditLogs.createdAt))
+    .limit(limit);
 }

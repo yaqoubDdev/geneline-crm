@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { type CSSProperties, useMemo, useState } from "react";
 import {
-  Building2, CheckCircle2, DollarSign, LayoutDashboard, Mail, Plus, TrendingUp, Users, UserCircle, UserX,
+  Activity, Building2, CheckCircle2, DollarSign, LayoutDashboard, Mail, Plus, TrendingUp, Users, UserCircle, UserX,
 } from "lucide-react";
 import { C, h1Style, pageStyle, primaryBtn, STAGE_COLOR, STAGES, TYPES } from "@/lib/theme";
 import type { Row } from "@/lib/types";
@@ -11,16 +11,48 @@ import { BizCard, Empty, NavBtn, Panel, SearchBar, Select, Stat, TopBar } from "
 import { AddAgentModal, DetailModal } from "./Modals";
 
 type AgentInfo = { id: number; name: string; email: string };
+type AgentProgress = {
+  id: number; name: string; touchedToday: number; createdToday: number; target: number; metTarget: boolean;
+};
+type AuditEntry = {
+  id: number; actorName: string; action: string;
+  businessCode: string | null; businessName: string | null; details: string | null;
+  createdAt: string | Date;
+};
 
 const STATUS_TINT: Record<string, string> = {
   Pending: "#8892A0", Active: C.greenBright, Paused: C.amber, Churned: "#B0483C",
 };
 
+const ACTION_LABEL: Record<string, string> = {
+  create_business: "logged a new business",
+  update_business: "updated",
+  onboard_business: "onboarded",
+  account_status_change: "changed status of",
+  create_user: "added a user",
+};
+
+function timeAgo(when: string | Date): string {
+  const d = typeof when === "string" ? new Date(when) : when;
+  const secs = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (secs < 60) return "just now";
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return d.toLocaleDateString();
+}
+
+const DAILY_TARGET = 15;
+const badge: CSSProperties = {
+  fontSize: 11, fontWeight: 700, color: "#fff", padding: "3px 8px", borderRadius: 999,
+};
+
 export default function AdminApp({
-  rows, agentList, adminName,
-}: { rows: Row[]; agentList: AgentInfo[]; adminName: string }) {
+  rows, agentList, progress, audit, adminName,
+}: { rows: Row[]; agentList: AgentInfo[]; progress: AgentProgress[]; audit: AuditEntry[]; adminName: string }) {
   const agents = agentList.map((a) => a.name);
-  const [view, setView] = useState<"dashboard" | "all" | "agents">("dashboard");
+  const [view, setView] = useState<"dashboard" | "monitoring" | "all" | "agents">("dashboard");
   const [q, setQ] = useState("");
   const [fType, setFType] = useState("All");
   const [fAgent, setFAgent] = useState("All");
@@ -69,6 +101,7 @@ export default function AdminApp({
       <TopBar name={adminName} subtitle="Admin" onLogout={() => signOutAction()}
         nav={<div style={{ display: "flex", gap: 4 }}>
           <NavBtn active={view === "dashboard"} onClick={() => setView("dashboard")} icon={LayoutDashboard}>Dashboard</NavBtn>
+          <NavBtn active={view === "monitoring"} onClick={() => setView("monitoring")} icon={Activity}>Monitoring</NavBtn>
           <NavBtn active={view === "all"} onClick={() => setView("all")} icon={Building2}>All businesses</NavBtn>
           <NavBtn active={view === "agents"} onClick={() => setView("agents")} icon={Users}>Agents</NavBtn>
         </div>} />
@@ -163,6 +196,60 @@ export default function AdminApp({
                 </Panel>
               </div>
             )}
+          </>
+        ) : view === "monitoring" ? (
+          <>
+            <h1 style={h1Style}>Daily activity</h1>
+            <p style={{ color: C.muted, margin: "4px 0 22px", fontSize: 14 }}>
+              Each agent should talk to {DAILY_TARGET} businesses per day — new prospects or follow-ups. Resets at midnight.
+            </p>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12, marginBottom: 24 }}>
+              {progress.length === 0 && <Empty text="No agents to monitor yet." />}
+              {progress.map((p) => {
+                const pct = Math.min(100, Math.round((p.touchedToday / p.target) * 100));
+                const tint = p.metTarget ? C.greenBright : pct >= 60 ? C.amber : C.clay;
+                return (
+                  <div key={p.id} style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "15px 17px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                      <span style={{ fontWeight: 700, fontSize: 15, color: C.ink }}>{p.name}</span>
+                      {p.metTarget
+                        ? <span style={{ ...badge, background: C.greenBright }}>Target met</span>
+                        : <span style={{ ...badge, background: tint }}>{p.target - p.touchedToday} to go</span>}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                      <span style={{ fontFamily: "'Archivo',sans-serif", fontWeight: 800, fontSize: 30, color: tint }}>{p.touchedToday}</span>
+                      <span style={{ fontSize: 14, color: C.muted }}>/ {p.target} businesses</span>
+                    </div>
+                    <div style={{ height: 8, background: C.paper, borderRadius: 6, overflow: "hidden", margin: "10px 0 6px" }}>
+                      <div style={{ width: pct + "%", height: "100%", background: tint, borderRadius: 6, transition: "width .4s" }} />
+                    </div>
+                    <div style={{ fontSize: 12, color: C.muted }}>{p.createdToday} new · {p.touchedToday - p.createdToday} follow-ups</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <Panel title="Activity feed">
+              {audit.length === 0
+                ? <Empty text="No activity logged yet." />
+                : <div style={{ display: "grid", gap: 2 }}>
+                    {audit.map((a) => (
+                      <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 4px", borderBottom: `1px solid ${C.line}` }}>
+                        <div style={{ width: 30, height: 30, borderRadius: 8, background: C.paper, flexShrink: 0, display: "grid", placeItems: "center", color: C.green }}>
+                          <Activity size={15} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: C.ink }}>
+                          <b>{a.actorName}</b> {ACTION_LABEL[a.action] ?? a.action}
+                          {a.businessName ? <> <span style={{ color: C.green }}>{a.businessName}</span></> : null}
+                          {a.businessCode ? <span style={{ color: C.muted }}> ({a.businessCode})</span> : null}
+                          {a.details ? <span style={{ color: C.muted }}> — {a.details}</span> : null}
+                        </div>
+                        <span style={{ fontSize: 12, color: C.muted, flexShrink: 0 }}>{timeAgo(a.createdAt)}</span>
+                      </div>
+                    ))}
+                  </div>}
+            </Panel>
           </>
         ) : view === "all" ? (
           <>

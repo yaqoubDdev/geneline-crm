@@ -8,6 +8,7 @@ import { auth, signIn, signOut } from "@/auth";
 import { db } from "@/db";
 import { businesses, onboardingAccounts, users } from "@/db/schema";
 import type { AccountStatus, BizType, Stage } from "@/lib/types";
+import { recordAudit } from "@/lib/audit";
 
 /* ---------------- Auth ---------------- */
 export async function authenticate(
@@ -58,6 +59,13 @@ export async function createAgent(
 
   const passwordHash = await bcrypt.hash(password, 10);
   await db.insert(users).values({ name, email, passwordHash, role });
+
+  await recordAudit({
+    userId: Number(session.user.id),
+    actorName: session.user.name ?? session.user.email ?? "Admin",
+    action: "create_user",
+    details: `Created ${role} ${name} <${email}>`,
+  });
 
   revalidatePath("/admin");
   return { ok: true, name };
@@ -137,12 +145,35 @@ export async function saveBusiness(input: SaveInput): Promise<{ error?: string }
     followUpDate: input.followUpDate || null,
   };
 
+  const actorName = session.user.name ?? session.user.email ?? "Unknown";
+
   if (input.dbId) {
-    await loadOwned(input.dbId, userId, isAdmin);
+    const existing = await loadOwned(input.dbId, userId, isAdmin);
     await db.update(businesses).set(fields).where(eq(businesses.id, input.dbId));
+    await recordAudit({
+      userId,
+      actorName,
+      action: "update_business",
+      businessId: input.dbId,
+      businessCode: existing.code,
+      businessName: fields.name,
+      details: `Stage: ${fields.stage}`,
+    });
   } else {
     // New businesses are owned by the logged-in agent.
-    await db.insert(businesses).values({ ...fields, agentId: userId });
+    const [created] = await db
+      .insert(businesses)
+      .values({ ...fields, agentId: userId })
+      .returning({ id: businesses.id, code: businesses.code });
+    await recordAudit({
+      userId,
+      actorName,
+      action: "create_business",
+      businessId: created.id,
+      businessCode: created.code,
+      businessName: fields.name,
+      details: `Stage: ${fields.stage}`,
+    });
   }
 
   revalidatePath("/agent");
@@ -162,7 +193,7 @@ export async function onboardBusiness(dbId: number, account: OnboardInput, month
   if (!session?.user) throw new Error("Unauthorized");
   const userId = Number(session.user.id);
   const isAdmin = session.user.role === "admin";
-  await loadOwned(dbId, userId, isAdmin);
+  const business = await loadOwned(dbId, userId, isAdmin);
 
   const passwordHash = await bcrypt.hash(account.password, 10);
 
@@ -190,6 +221,16 @@ export async function onboardBusiness(dbId: number, account: OnboardInput, month
     .update(businesses)
     .set({ onboarded: true, stage: "Won", monthlyFee })
     .where(eq(businesses.id, dbId));
+
+  await recordAudit({
+    userId,
+    actorName: session.user.name ?? session.user.email ?? "Unknown",
+    action: "onboard_business",
+    businessId: dbId,
+    businessCode: business.code,
+    businessName: business.name,
+    details: `Onboarded at Le ${monthlyFee}/mo`,
+  });
 
   revalidatePath("/agent");
   revalidatePath("/admin");
@@ -223,6 +264,21 @@ export async function setAccountStatus(dbId: number, status: AccountStatus) {
     .update(onboardingAccounts)
     .set(set)
     .where(eq(onboardingAccounts.businessId, dbId));
+
+  const [biz] = await db
+    .select({ code: businesses.code, name: businesses.name })
+    .from(businesses)
+    .where(eq(businesses.id, dbId))
+    .limit(1);
+  await recordAudit({
+    userId: Number(session.user.id),
+    actorName: session.user.name ?? session.user.email ?? "Admin",
+    action: "account_status_change",
+    businessId: dbId,
+    businessCode: biz?.code ?? null,
+    businessName: biz?.name ?? null,
+    details: `Status → ${status}`,
+  });
 
   revalidatePath("/admin");
 }

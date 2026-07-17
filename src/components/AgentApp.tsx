@@ -1,14 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, CalendarClock, CheckCircle2, Plus, TrendingUp } from "lucide-react";
+import { Building2, CalendarClock, CheckCircle2, Plus, Target, TrendingUp } from "lucide-react";
 import { C, h1Style, pageStyle, primaryBtn } from "@/lib/theme";
 import type { Row } from "@/lib/types";
 import { signOutAction } from "@/lib/actions";
 import { BizCard, Empty, SearchBar, Stat, TopBar } from "./ui";
 import { OnboardModal, VisitModal } from "./Modals";
 
-export default function AgentApp({ rows, agentName }: { rows: Row[]; agentName: string }) {
+type DailyProgress = { touchedToday: number; createdToday: number; target: number };
+
+export default function AgentApp({
+  rows, progress, agentName,
+}: { rows: Row[]; progress: DailyProgress; agentName: string }) {
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<Row | "new" | null>(null);
   const [onboard, setOnboard] = useState<Row | null>(null);
@@ -47,6 +51,8 @@ export default function AgentApp({ rows, agentName }: { rows: Row[]; agentName: 
           </button>
         </div>
 
+        <DailyQuota progress={progress} />
+
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 20 }}>
           <Stat label="Total logged" value={stats.total} icon={Building2} tint={C.green} />
           <Stat label="Interested" value={stats.interested} icon={TrendingUp} tint={C.amber} />
@@ -80,6 +86,33 @@ export default function AgentApp({ rows, agentName }: { rows: Row[]; agentName: 
       {editing && <VisitModal row={editing === "new" ? null : editing} onClose={() => setEditing(null)} />}
       {onboard && <OnboardModal row={onboard} onClose={() => setOnboard(null)} />}
     </>
+  );
+}
+
+function DailyQuota({ progress }: { progress: DailyProgress }) {
+  const { touchedToday, target } = progress;
+  const met = touchedToday >= target;
+  const pct = Math.min(100, Math.round((touchedToday / target) * 100));
+  const tint = met ? C.greenBright : pct >= 60 ? C.amber : C.clay;
+  return (
+    <div style={{ background: C.card, border: `1px solid ${C.line}`, borderLeft: `4px solid ${tint}`,
+      borderRadius: 14, padding: "14px 16px", marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+        <Target size={17} style={{ color: tint }} />
+        <span style={{ fontWeight: 700, fontSize: 14, color: C.ink, flex: 1 }}>Today&apos;s target</span>
+        <span style={{ fontFamily: "'Archivo',sans-serif", fontWeight: 800, fontSize: 18, color: tint }}>
+          {touchedToday}<span style={{ color: C.muted, fontWeight: 600, fontSize: 14 }}> / {target}</span>
+        </span>
+      </div>
+      <div style={{ height: 8, background: C.paper, borderRadius: 6, overflow: "hidden" }}>
+        <div style={{ width: pct + "%", height: "100%", background: tint, borderRadius: 6, transition: "width .4s" }} />
+      </div>
+      <div style={{ fontSize: 12.5, color: C.muted, marginTop: 7 }}>
+        {met
+          ? "Nice — you've hit your 15 businesses for today."
+          : `${target - touchedToday} more ${target - touchedToday === 1 ? "business" : "businesses"} to talk to today.`}
+      </div>
+    </div>
   );
 }
 

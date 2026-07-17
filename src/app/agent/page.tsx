@@ -1,9 +1,12 @@
 import { requireRole } from "@/lib/session";
-import { getRowsForAgent } from "@/lib/queries";
+import { getProgressForAgent, getRowsForAgent } from "@/lib/queries";
 import AgentApp from "@/components/AgentApp";
 
 export default async function AgentPage() {
   const user = await requireRole("agent");
-  const rows = await getRowsForAgent(Number(user.id));
-  return <AgentApp rows={rows} agentName={user.name ?? "Agent"} />;
+  const [rows, progress] = await Promise.all([
+    getRowsForAgent(Number(user.id)),
+    getProgressForAgent(Number(user.id)),
+  ]);
+  return <AgentApp rows={rows} progress={progress} agentName={user.name ?? "Agent"} />;
 }
