@@ -9,6 +9,7 @@ import {
 import { C, ghostBtn, inpStyle, primaryBtn, STAGES, STAGE_COLOR, TYPES } from "@/lib/theme";
 import type { AccountStatus, BizType, Row, Stage } from "@/lib/types";
 import { createAgent, onboardBusiness, saveBusiness, setAccountStatus } from "@/lib/actions";
+import { queueNewBusiness } from "@/lib/offline/queue";
 import { Field, FormRow, Info, Modal, ModalFooter, Tag, TYPE_ICON } from "./ui";
 
 /* ---------------- VisitModal: add / update a business ---------------- */
@@ -30,9 +31,40 @@ export function VisitModal({ row, onClose }: { row: Row | null; onClose: () => v
   const set = (k: keyof typeof f, v: string) => setF(p => ({ ...p, [k]: v }));
   const valid = f.name.trim() && f.contact.trim();
   const [error, setError] = useState<string | null>(null);
+  const [queued, setQueued] = useState(false);
+  const isNew = !row;
+
+  // Track connectivity so we can queue new businesses when offline.
+  const [online, setOnline] = useState(true);
+  useEffect(() => {
+    const upd = () => setOnline(navigator.onLine);
+    upd();
+    window.addEventListener("online", upd);
+    window.addEventListener("offline", upd);
+    return () => {
+      window.removeEventListener("online", upd);
+      window.removeEventListener("offline", upd);
+    };
+  }, []);
 
   const submit = () => {
     setError(null);
+    // Offline: queue new businesses on the device; editing needs a connection.
+    if (!online) {
+      if (!isNew) {
+        setError("You're offline. Editing an existing business needs a connection — it'll work again once you're back online.");
+        return;
+      }
+      start(async () => {
+        try {
+          await queueNewBusiness({ ...f });
+          setQueued(true);
+        } catch {
+          setError("Couldn't save on this device. Please try again.");
+        }
+      });
+      return;
+    }
     start(async () => {
       const res = await saveBusiness({ dbId: row?.dbId, ...f });
       if (res?.error) { setError(res.error); return; }
@@ -40,6 +72,18 @@ export function VisitModal({ row, onClose }: { row: Row | null; onClose: () => v
       onClose();
     });
   };
+
+  if (queued) {
+    return (
+      <Modal onClose={onClose} title="Saved offline" accent={C.amber}>
+        <div style={{ padding: "6px 2px 4px", fontSize: 14, color: C.ink, lineHeight: 1.55 }}>
+          <b>{f.name}</b> is saved on this device. It&apos;ll sync automatically as soon as
+          you&apos;re back online — you don&apos;t need to do anything.
+        </div>
+        <ModalFooter><button style={primaryBtn} onClick={onClose}>Done</button></ModalFooter>
+      </Modal>
+    );
+  }
 
   return (
     <Modal onClose={onClose} title={row ? "Update business" : "Log a new business"} badge={row?.code}>
@@ -98,7 +142,7 @@ export function VisitModal({ row, onClose }: { row: Row | null; onClose: () => v
       <ModalFooter>
         <button style={ghostBtn} onClick={onClose} disabled={pending}>Cancel</button>
         <button style={{ ...primaryBtn, opacity: valid && !pending ? 1 : .5, pointerEvents: valid && !pending ? "auto" : "none" }}
-          onClick={submit}>{pending ? "Saving…" : "Save"}</button>
+          onClick={submit}>{pending ? "Saving…" : !online && isNew ? "Save offline" : "Save"}</button>
       </ModalFooter>
     </Modal>
   );

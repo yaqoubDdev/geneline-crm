@@ -22,3 +22,6 @@ button:focus-visible { outline: 2px solid #128C7E; outline-offset: 2px; }
 
 ::-webkit-scrollbar { width: 9px; height: 9px; }
 ::-webkit-scrollbar-thumb { background: #E4DFD2; border-radius: 6px; }
+
+@keyframes gx-spin { to { transform: rotate(360deg); } }
+.gx-spin { animation: gx-spin 0.9s linear infinite; }

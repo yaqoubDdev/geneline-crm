@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, CalendarClock, CheckCircle2, Plus, Target, TrendingUp } from "lucide-react";
+import { Building2, CalendarClock, CheckCircle2, CloudUpload, Plus, Target, TrendingUp } from "lucide-react";
 import { C, h1Style, pageStyle, primaryBtn } from "@/lib/theme";
 import type { Row } from "@/lib/types";
 import { signOutAction } from "@/lib/actions";
+import { useOffline } from "@/lib/offline/useOffline";
+import type { PendingBusiness } from "@/lib/offline/queue";
 import { BizCard, Empty, SearchBar, Stat, TopBar } from "./ui";
 import { OnboardModal, VisitModal } from "./Modals";
 
@@ -16,6 +18,7 @@ export default function AgentApp({
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<Row | "new" | null>(null);
   const [onboard, setOnboard] = useState<Row | null>(null);
+  const { pending, discard } = useOffline();
 
   const filtered = rows.filter(r => r.name.toLowerCase().includes(q.toLowerCase()));
   const stats = {
@@ -53,6 +56,8 @@ export default function AgentApp({
 
         <DailyQuota progress={progress} />
 
+        {pending.length > 0 && <PendingSection pending={pending} onDiscard={discard} />}
+
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 20 }}>
           <Stat label="Total logged" value={stats.total} icon={Building2} tint={C.green} />
           <Stat label="Interested" value={stats.interested} icon={TrendingUp} tint={C.amber} />
@@ -86,6 +91,39 @@ export default function AgentApp({
       {editing && <VisitModal row={editing === "new" ? null : editing} onClose={() => setEditing(null)} />}
       {onboard && <OnboardModal row={onboard} onClose={() => setOnboard(null)} />}
     </>
+  );
+}
+
+function PendingSection({
+  pending, onDiscard,
+}: { pending: PendingBusiness[]; onDiscard: (id: string) => void }) {
+  return (
+    <div style={{ background: C.card, border: `1px solid ${C.amber}44`, borderLeft: `4px solid ${C.amber}`,
+      borderRadius: 14, padding: "14px 16px", marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <CloudUpload size={16} style={{ color: C.amber }} />
+        <span style={{ fontWeight: 700, fontSize: 14, color: C.ink }}>Waiting to sync</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: C.amber,
+          padding: "1px 8px", borderRadius: 20 }}>{pending.length}</span>
+      </div>
+      <div style={{ display: "grid", gap: 8 }}>
+        {pending.map(p => (
+          <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10,
+            padding: "10px 12px", background: C.paper, borderRadius: 11 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 600, fontSize: 14, color: C.ink }}>{p.input.name}</div>
+              <div style={{ fontSize: 12, color: C.muted }}>{p.input.contact} · {p.input.stage}</div>
+              {p.error && <div style={{ fontSize: 12, color: C.clay, marginTop: 3, fontWeight: 600 }}>{p.error}</div>}
+            </div>
+            {p.error
+              ? <button onClick={() => onDiscard(p.id)} style={{ padding: "6px 11px", borderRadius: 8,
+                  border: `1.5px solid ${C.line}`, background: "#fff", color: C.clay, fontSize: 12.5,
+                  fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Discard</button>
+              : <span style={{ fontSize: 12, color: C.muted, flexShrink: 0 }}>saved on device</span>}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
