@@ -183,7 +183,7 @@ export function Info({ icon: Icon, label, value }: { icon: LucideIcon; label: st
   return (
     <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
       <Icon size={16} style={{ color: C.muted, marginTop: 2, flexShrink: 0 }} />
-      <div>
+      <div style={{ minWidth: 0, overflowWrap: "anywhere" }}>
         <div style={{ fontSize: 11.5, color: C.muted, fontWeight: 500 }}>{label}</div>
         <div style={{ fontSize: 14, color: C.ink, fontWeight: 500 }}>{value}</div>
       </div>
@@ -206,12 +206,11 @@ export function Modal({
   children, onClose, title, badge, accent = C.green,
 }: { children: ReactNode; onClose: () => void; title: string; badge?: string; accent?: string }) {
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(11,46,36,.5)",
-      backdropFilter: "blur(3px)", display: "grid", placeItems: "center", padding: 16, zIndex: 50 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: C.card, borderRadius: 20,
-        width: "100%", maxWidth: 480, maxHeight: "90vh", overflow: "auto",
+    <div onClick={onClose} className="gx-modal-overlay" style={{ background: "rgba(11,46,36,.5)",
+      backdropFilter: "blur(3px)" }}>
+      <div onClick={e => e.stopPropagation()} className="gx-modal-card" style={{ background: C.card,
         boxShadow: "0 24px 60px rgba(11,46,36,.35)" }}>
-        <div style={{ padding: "20px 22px 0", display: "flex", alignItems: "flex-start",
+        <div style={{ padding: "20px var(--gx-modal-px) 0", display: "flex", alignItems: "flex-start",
           justifyContent: "space-between", gap: 12 }}>
           <div>
             <h2 style={{ fontFamily: "'Archivo',sans-serif", fontWeight: 800, fontSize: "var(--gx-modal-title)",
@@ -225,7 +224,7 @@ export function Modal({
             <X size={18} />
           </button>
         </div>
-        <div style={{ padding: "18px 22px 22px" }}>{children}</div>
+        <div style={{ padding: "18px var(--gx-modal-px) 22px" }}>{children}</div>
       </div>
     </div>
   );
