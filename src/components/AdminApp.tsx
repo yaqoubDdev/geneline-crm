@@ -306,19 +306,19 @@ export default function AdminApp({
                 const won = rs.filter(r => r.stage === "Won").length;
                 const mrr = rs.filter(r => r.account?.status === "Active").reduce((s, r) => s + (r.monthlyFee || 0), 0);
                 return (
-                  <div key={a.id} style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 14,
-                    padding: "15px 17px", display: "flex", alignItems: "center", gap: 14 }}>
-                    <div style={{ width: 42, height: 42, borderRadius: 11, background: C.paper, flexShrink: 0,
+                  <div key={a.id} className="gx-bizcard" style={{ background: C.card, border: `1px solid ${C.line}`,
+                    borderRadius: 14, padding: "14px 16px" }}>
+                    <div className="gx-bizcard-icon" style={{ width: 42, height: 42, borderRadius: 11, background: C.paper,
                       display: "grid", placeItems: "center", color: C.green }}><UserCircle size={22} /></div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="gx-bizcard-info">
                       <div style={{ fontWeight: 700, fontSize: 15, color: C.ink }}>{a.name}</div>
                       <div style={{ fontSize: 13, color: C.muted, marginTop: 3, display: "flex", alignItems: "center", gap: 5 }}>
-                        <Mail size={12} /> {a.email}
+                        <Mail size={12} style={{ flexShrink: 0 }} /> {a.email}
                       </div>
                     </div>
-                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div className="gx-bizcard-meta">
                       <div style={{ fontSize: 12.5, color: C.muted }}>{rs.length} logged · {won} won</div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: C.green, marginTop: 2 }}>Le {mrr.toLocaleString()}/mo</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: C.green }}>Le {mrr.toLocaleString()}/mo</div>
                     </div>
                   </div>
                 );
