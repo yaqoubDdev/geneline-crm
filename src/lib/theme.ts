@@ -30,9 +30,12 @@ export const TYPES = [
 ] as const;
 
 /* ============================ STYLE TOKENS ============================ */
-export const pageStyle: CSSProperties = { maxWidth: 1080, margin: "0 auto", padding: "26px 22px 60px" };
+export const pageStyle: CSSProperties = {
+  maxWidth: 1080, margin: "0 auto",
+  padding: "var(--gx-pad-top) var(--gx-pad-x) var(--gx-pad-bottom)",
+};
 export const h1Style: CSSProperties = {
-  fontFamily: "'Archivo',sans-serif", fontWeight: 800, fontSize: 27,
+  fontFamily: "'Archivo',sans-serif", fontWeight: 800, fontSize: "var(--gx-h1)",
   color: C.ink, margin: 0, letterSpacing: "-.025em",
 };
 export const lblStyle: CSSProperties = { display: "block", fontSize: 12.5, fontWeight: 600, color: C.muted, marginBottom: 6 };

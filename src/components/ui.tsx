@@ -26,16 +26,16 @@ export function TopBar({
   return (
     <div style={{ background: C.ink, color: "#fff", position: "sticky", top: 0, zIndex: 20,
       boxShadow: "0 2px 20px rgba(11,46,36,.25)" }}>
-      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "13px 22px",
-        display: "flex", alignItems: "center", gap: 18 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "var(--gx-topbar-pad)",
+        display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, flexShrink: 0 }}>
           <div style={{ width: 30, height: 30, borderRadius: 8, background: C.green,
             display: "grid", placeItems: "center" }}><Phone size={16} color="#fff" strokeWidth={2.5} /></div>
           <span style={{ fontFamily: "'Archivo',sans-serif", fontWeight: 800, fontSize: 18,
             letterSpacing: "-.02em" }}>geneline<span style={{ color: C.greenBright }}>-x</span></span>
         </div>
-        {nav && <div style={{ marginLeft: 8 }}>{nav}</div>}
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14 }}>
+        {nav && <div className="gx-nav">{nav}</div>}
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
           <div style={{ textAlign: "right", lineHeight: 1.2 }}>
             <div style={{ fontSize: 13, fontWeight: 600 }}>{name}</div>
             <div style={{ fontSize: 11, color: "rgba(255,255,255,.6)" }}>{subtitle}</div>
@@ -55,9 +55,10 @@ export function NavBtn({
   active, onClick, icon: Icon, children,
 }: { active: boolean; onClick: () => void; icon: LucideIcon; children: ReactNode }) {
   return (
-    <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 7,
-      padding: "8px 13px", borderRadius: 9, border: "none", cursor: "pointer", fontFamily: "inherit",
-      fontSize: 13.5, fontWeight: 600, background: active ? "rgba(37,211,102,.18)" : "transparent",
+    <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 7, flexShrink: 0,
+      whiteSpace: "nowrap", padding: "8px 13px", borderRadius: 9, border: "none", cursor: "pointer",
+      fontFamily: "inherit", fontSize: 13.5, fontWeight: 600,
+      background: active ? "rgba(37,211,102,.18)" : "transparent",
       color: active ? "#fff" : "rgba(255,255,255,.6)" }}>
       <Icon size={16} /> {children}
     </button>
@@ -123,7 +124,8 @@ export function Stat({
         <div style={{ width: 30, height: 30, borderRadius: 8, background: tint + "18",
           display: "grid", placeItems: "center", color: tint }}><Icon size={16} /></div>
       </div>
-      <div style={{ fontFamily: "'Archivo',sans-serif", fontWeight: 800, fontSize: big ? 30 : 26,
+      <div style={{ fontFamily: "'Archivo',sans-serif", fontWeight: 800,
+        fontSize: big ? "var(--gx-stat-big)" : "var(--gx-stat)",
         color: C.ink, marginTop: 6, letterSpacing: "-.02em" }}>{value}</div>
     </div>
   );
@@ -210,7 +212,7 @@ export function Modal({
         <div style={{ padding: "20px 22px 0", display: "flex", alignItems: "flex-start",
           justifyContent: "space-between", gap: 12 }}>
           <div>
-            <h2 style={{ fontFamily: "'Archivo',sans-serif", fontWeight: 800, fontSize: 21,
+            <h2 style={{ fontFamily: "'Archivo',sans-serif", fontWeight: 800, fontSize: "var(--gx-modal-title)",
               color: C.ink, margin: 0, letterSpacing: "-.02em" }}>{title}</h2>
             {badge && <span style={{ display: "inline-block", marginTop: 6, fontSize: 12, fontWeight: 700,
               fontFamily: "'Archivo',sans-serif", color: accent, background: accent + "16",
@@ -236,5 +238,5 @@ export function Field({ label, children }: { label: string; children: ReactNode 
 }
 
 export function FormRow({ children }: { children: ReactNode }) {
-  return <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>{children}</div>;
+  return <div style={{ display: "grid", gridTemplateColumns: "var(--gx-form-row)", gap: 12 }}>{children}</div>;
 }

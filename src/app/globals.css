@@ -25,3 +25,37 @@ button:focus-visible { outline: 2px solid #128C7E; outline-offset: 2px; }
 
 @keyframes gx-spin { to { transform: rotate(360deg); } }
 .gx-spin { animation: gx-spin 0.9s linear infinite; }
+
+/* ---------- Responsive scale tokens (consumed by inline styles) ---------- */
+:root {
+  --gx-pad-top: 26px;
+  --gx-pad-x: 22px;
+  --gx-pad-bottom: 60px;
+  --gx-topbar-pad: 13px 22px;
+  --gx-h1: 27px;
+  --gx-modal-title: 21px;
+  --gx-stat-big: 30px;
+  --gx-stat: 26px;
+  --gx-num: 24px;
+  --gx-cols-main: 1.3fr 1fr;
+  --gx-form-row: 1fr 1fr;
+}
+@media (max-width: 640px) {
+  :root {
+    --gx-pad-top: 16px;
+    --gx-pad-x: 13px;
+    --gx-pad-bottom: 96px;
+    --gx-topbar-pad: 11px 14px;
+    --gx-h1: 21px;
+    --gx-modal-title: 19px;
+    --gx-stat-big: 23px;
+    --gx-stat: 21px;
+    --gx-num: 20px;
+    --gx-cols-main: 1fr;
+    --gx-form-row: 1fr;
+  }
+}
+
+/* Horizontal-scroll nav so the admin tabs never overflow the top bar on mobile */
+.gx-nav { flex: 1; min-width: 0; overflow-x: auto; margin-left: 8px; scrollbar-width: none; }
+.gx-nav::-webkit-scrollbar { display: none; }

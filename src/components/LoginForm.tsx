@@ -49,10 +49,6 @@ export default function LoginForm() {
             Admin sees every business & metric. Agents see only their own.
           </p>
         </form>
-
-        <p style={{ textAlign: "center", fontSize: 11.5, color: C.muted, marginTop: 16 }}>
-          Demo: <b>diallo@geneline-x.com</b> (admin) or <b>fiona@geneline-x.com</b> (agent) · password <b>demo1234</b>
-        </p>
       </div>
     </div>
   );

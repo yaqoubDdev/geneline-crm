@@ -122,7 +122,7 @@ export default function AdminApp({
               <Stat label="Churned" value={m.lifecycle.Churned} icon={UserX} tint={C.clay} big />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "var(--gx-cols-main)", gap: 16 }}>
               <Panel title="Agent leaderboard">
                 <div style={{ display: "grid", gap: 8 }}>
                   {m.byAgent.map((a, i) => (
@@ -168,13 +168,13 @@ export default function AdminApp({
                   {(["Active", "Pending", "Paused", "Churned"] as const).map(st => (
                     <div key={st} style={{ flex: "1 1 110px", background: C.paper, borderRadius: 11, padding: "12px 14px" }}>
                       <div style={{ fontSize: 12.5, color: C.muted }}>{st}</div>
-                      <div style={{ fontFamily: "'Archivo',sans-serif", fontWeight: 800, fontSize: 24,
+                      <div style={{ fontFamily: "'Archivo',sans-serif", fontWeight: 800, fontSize: "var(--gx-num)",
                         color: STATUS_TINT[st], marginTop: 2 }}>{m.lifecycle[st]}</div>
                     </div>
                   ))}
                   <div style={{ flex: "1 1 110px", background: C.paper, borderRadius: 11, padding: "12px 14px" }}>
                     <div style={{ fontSize: 12.5, color: C.muted }}>Churn</div>
-                    <div style={{ fontFamily: "'Archivo',sans-serif", fontWeight: 800, fontSize: 24,
+                    <div style={{ fontFamily: "'Archivo',sans-serif", fontWeight: 800, fontSize: "var(--gx-num)",
                       color: "#B0483C", marginTop: 2 }}>{m.churnRate}%</div>
                   </div>
                 </div>
@@ -218,7 +218,7 @@ export default function AdminApp({
                         : <span style={{ ...badge, background: tint }}>{p.target - p.touchedToday} to go</span>}
                     </div>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                      <span style={{ fontFamily: "'Archivo',sans-serif", fontWeight: 800, fontSize: 30, color: tint }}>{p.touchedToday}</span>
+                      <span style={{ fontFamily: "'Archivo',sans-serif", fontWeight: 800, fontSize: "var(--gx-stat-big)", color: tint }}>{p.touchedToday}</span>
                       <span style={{ fontSize: 14, color: C.muted }}>/ {p.target} businesses</span>
                     </div>
                     <div style={{ height: 8, background: C.paper, borderRadius: 6, overflow: "hidden", margin: "10px 0 6px" }}>
