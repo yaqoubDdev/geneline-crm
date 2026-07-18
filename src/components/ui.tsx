@@ -34,7 +34,7 @@ export function TopBar({
           <span style={{ fontFamily: "'Archivo',sans-serif", fontWeight: 800, fontSize: 18,
             letterSpacing: "-.02em" }}>geneline<span style={{ color: C.greenBright }}>-x</span></span>
         </div>
-        {nav && <div className="gx-nav">{nav}</div>}
+        {nav && <div style={{ marginLeft: 8, minWidth: 0 }}>{nav}</div>}
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
           <div style={{ textAlign: "right", lineHeight: 1.2 }}>
             <div style={{ fontSize: 13, fontWeight: 600 }}>{name}</div>
@@ -76,14 +76,13 @@ export function BizCard({
 }) {
   const Icon = TYPE_ICON[r.type];
   return (
-    <div onClick={onClick} style={{ background: C.card, border: `1px solid ${C.line}`,
-      borderRadius: 14, padding: "15px 17px", cursor: "pointer", transition: "transform .12s, box-shadow .12s",
-      display: "flex", alignItems: "center", gap: 14 }}
+    <div onClick={onClick} className="gx-bizcard" style={{ background: C.card, border: `1px solid ${C.line}`,
+      borderRadius: 14, padding: "14px 16px", cursor: "pointer", transition: "transform .12s, box-shadow .12s" }}
       onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(11,46,36,.09)"; }}
       onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = ""; }}>
-      <div style={{ width: 42, height: 42, borderRadius: 11, background: C.paper, flexShrink: 0,
+      <div className="gx-bizcard-icon" style={{ width: 42, height: 42, borderRadius: 11, background: C.paper,
         display: "grid", placeItems: "center", color: C.green }}><Icon size={20} /></div>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="gx-bizcard-info">
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <span style={{ fontWeight: 700, fontSize: 15, color: C.ink }}>{r.name}</span>
           <span style={{ fontSize: 11, color: C.muted, fontFamily: "'Archivo',sans-serif",
@@ -95,13 +94,13 @@ export function BizCard({
           {r.contact}{r.objection ? ` · ${r.objection}` : ""}
         </div>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
+      <div className="gx-bizcard-meta">
         <Tag color={STAGE_COLOR[r.stage]}>{r.stage}</Tag>
         {showAgent && <span style={{ fontSize: 11.5, color: C.muted }}>{r.agent}</span>}
         {r.monthlyFee != null && <span style={{ fontSize: 12, fontWeight: 700, color: C.green }}>Le {r.monthlyFee}/mo</span>}
       </div>
       {onOnboard && (
-        <button onClick={e => { e.stopPropagation(); onOnboard(); }} style={{ flexShrink: 0,
+        <button onClick={e => { e.stopPropagation(); onOnboard(); }} className="gx-bizcard-onboard" style={{
           display: "flex", alignItems: "center", gap: 6, padding: "9px 13px", borderRadius: 10,
           border: "none", background: C.greenBright, color: "#fff", fontWeight: 700, fontSize: 13,
           cursor: "pointer", fontFamily: "inherit" }}>

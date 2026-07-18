@@ -56,6 +56,26 @@ button:focus-visible { outline: 2px solid #128C7E; outline-offset: 2px; }
   }
 }
 
-/* Horizontal-scroll nav so the admin tabs never overflow the top bar on mobile */
-.gx-nav { flex: 1; min-width: 0; overflow-x: auto; margin-left: 8px; scrollbar-width: none; }
-.gx-nav::-webkit-scrollbar { display: none; }
+/* Nav: inline tabs on desktop, a hamburger menu on mobile (no sideways scroll) */
+.gx-nav-desktop { display: flex; gap: 4px; }
+.gx-nav-mobile { display: none; position: relative; }
+@media (max-width: 640px) {
+  .gx-nav-desktop { display: none; }
+  .gx-nav-mobile { display: block; }
+}
+
+/* Business card: single readable row on desktop, stacks cleanly on mobile */
+.gx-bizcard { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.gx-bizcard-icon { flex-shrink: 0; }
+.gx-bizcard-info { flex: 1 1 auto; min-width: 0; }
+.gx-bizcard-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+.gx-bizcard-onboard { flex-shrink: 0; }
+@media (max-width: 640px) {
+  .gx-bizcard { gap: 10px 12px; }
+  .gx-bizcard-info { flex-basis: calc(100% - 54px); }
+  .gx-bizcard-meta {
+    width: 100%; flex-direction: row; align-items: center;
+    justify-content: flex-start; gap: 12px; padding-left: 54px;
+  }
+  .gx-bizcard-onboard { width: 100%; justify-content: center; }
+}

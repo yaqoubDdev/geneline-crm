@@ -1,8 +1,8 @@
 "use client";
 
-import { type CSSProperties, useMemo, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Activity, Building2, CheckCircle2, DollarSign, LayoutDashboard, Mail, Plus, TrendingUp, Users, UserCircle, UserX,
+  Activity, Building2, CheckCircle2, DollarSign, LayoutDashboard, Mail, Menu, Plus, TrendingUp, Users, UserCircle, UserX, type LucideIcon,
 } from "lucide-react";
 import { C, h1Style, pageStyle, primaryBtn, STAGE_COLOR, STAGES, TYPES } from "@/lib/theme";
 import type { Row } from "@/lib/types";
@@ -19,6 +19,21 @@ type AuditEntry = {
   businessCode: string | null; businessName: string | null; details: string | null;
   createdAt: string | Date;
 };
+type View = "dashboard" | "monitoring" | "all" | "agents";
+
+const TABS: { key: View; label: string; icon: LucideIcon }[] = [
+  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { key: "monitoring", label: "Monitoring", icon: Activity },
+  { key: "all", label: "All businesses", icon: Building2 },
+  { key: "agents", label: "Agents", icon: Users },
+];
+
+// Read the active tab from the URL so a reload keeps you where you were.
+function readTab(): View {
+  if (typeof window === "undefined") return "dashboard";
+  const t = new URLSearchParams(window.location.search).get("tab");
+  return TABS.some((x) => x.key === t) ? (t as View) : "dashboard";
+}
 
 const STATUS_TINT: Record<string, string> = {
   Pending: "#8892A0", Active: C.greenBright, Paused: C.amber, Churned: "#B0483C",
@@ -52,7 +67,15 @@ export default function AdminApp({
   rows, agentList, progress, audit, adminName,
 }: { rows: Row[]; agentList: AgentInfo[]; progress: AgentProgress[]; audit: AuditEntry[]; adminName: string }) {
   const agents = agentList.map((a) => a.name);
-  const [view, setView] = useState<"dashboard" | "monitoring" | "all" | "agents">("dashboard");
+  const [view, setView] = useState<View>("dashboard");
+  // Restore the tab from the URL on mount; keep the URL in sync as it changes.
+  useEffect(() => { setView(readTab()); }, []);
+  const changeView = useCallback((v: View) => {
+    setView(v);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", v);
+    window.history.replaceState(null, "", url.toString());
+  }, []);
   const [q, setQ] = useState("");
   const [fType, setFType] = useState("All");
   const [fAgent, setFAgent] = useState("All");
@@ -99,12 +122,7 @@ export default function AdminApp({
   return (
     <>
       <TopBar name={adminName} subtitle="Admin" onLogout={() => signOutAction()}
-        nav={<div style={{ display: "flex", gap: 4 }}>
-          <NavBtn active={view === "dashboard"} onClick={() => setView("dashboard")} icon={LayoutDashboard}>Dashboard</NavBtn>
-          <NavBtn active={view === "monitoring"} onClick={() => setView("monitoring")} icon={Activity}>Monitoring</NavBtn>
-          <NavBtn active={view === "all"} onClick={() => setView("all")} icon={Building2}>All businesses</NavBtn>
-          <NavBtn active={view === "agents"} onClick={() => setView("agents")} icon={Users}>Agents</NavBtn>
-        </div>} />
+        nav={<AdminNav view={view} onSelect={changeView} />} />
 
       <div style={pageStyle}>
         {view === "dashboard" ? (
@@ -311,6 +329,56 @@ export default function AdminApp({
       </div>
       {detail && <DetailModal row={detail} onClose={() => setDetail(null)} />}
       {addAgent && <AddAgentModal onClose={() => setAddAgent(false)} />}
+    </>
+  );
+}
+
+/* Inline tabs on desktop; a hamburger dropdown on mobile. */
+function AdminNav({ view, onSelect }: { view: View; onSelect: (v: View) => void }) {
+  const [open, setOpen] = useState(false);
+  const current = TABS.find((t) => t.key === view) ?? TABS[0];
+  const CurrentIcon = current.icon;
+  return (
+    <>
+      <div className="gx-nav-desktop">
+        {TABS.map((t) => (
+          <NavBtn key={t.key} active={view === t.key} onClick={() => onSelect(t.key)} icon={t.icon}>
+            {t.label}
+          </NavBtn>
+        ))}
+      </div>
+
+      <div className="gx-nav-mobile">
+        <button onClick={() => setOpen((o) => !o)} style={{
+          display: "flex", alignItems: "center", gap: 7, padding: "8px 12px", borderRadius: 9,
+          border: "1px solid rgba(255,255,255,.18)", background: "rgba(255,255,255,.09)", color: "#fff",
+          cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap" }}>
+          <Menu size={17} /> <CurrentIcon size={15} /> {current.label}
+        </button>
+        {open && (
+          <>
+            <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 29 }} />
+            <div style={{
+              position: "absolute", top: "calc(100% + 8px)", left: 0, zIndex: 30, minWidth: 210,
+              background: C.card, borderRadius: 12, overflow: "hidden", border: `1px solid ${C.line}`,
+              boxShadow: "0 14px 36px rgba(11,46,36,.28)" }}>
+              {TABS.map((t) => {
+                const Icon = t.icon;
+                const active = view === t.key;
+                return (
+                  <button key={t.key} onClick={() => { onSelect(t.key); setOpen(false); }} style={{
+                    display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
+                    padding: "12px 15px", border: "none", cursor: "pointer", fontFamily: "inherit",
+                    fontSize: 14, fontWeight: 600, background: active ? C.paper : "#fff",
+                    color: active ? C.green : C.ink }}>
+                    <Icon size={17} /> {t.label}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
     </>
   );
 }
