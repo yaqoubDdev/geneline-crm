@@ -32,11 +32,14 @@ export function TopBar({
           <div style={{ width: 30, height: 30, borderRadius: 8, background: C.green,
             display: "grid", placeItems: "center" }}><Phone size={16} color="#fff" strokeWidth={2.5} /></div>
           <span style={{ fontFamily: "'Archivo',sans-serif", fontWeight: 800, fontSize: 18,
-            letterSpacing: "-.02em" }}>geneline<span style={{ color: C.greenBright }}>-x</span></span>
+            letterSpacing: "-.02em" }}>
+            <span className="gx-logo-full">geneline<span style={{ color: C.greenBright }}>-x</span></span>
+            <span className="gx-logo-short">g<span style={{ color: C.greenBright }}>-x</span></span>
+          </span>
         </div>
         {nav && <div style={{ marginLeft: 8, minWidth: 0 }}>{nav}</div>}
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
-          <div style={{ textAlign: "right", lineHeight: 1.2 }}>
+          <div className="gx-hide-mobile" style={{ textAlign: "right", lineHeight: 1.2 }}>
             <div style={{ fontSize: 13, fontWeight: 600 }}>{name}</div>
             <div style={{ fontSize: 11, color: "rgba(255,255,255,.6)" }}>{subtitle}</div>
           </div>

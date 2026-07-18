@@ -67,15 +67,23 @@ button:focus-visible { outline: 2px solid #128C7E; outline-offset: 2px; }
 /* Business card: single readable row on desktop, stacks cleanly on mobile */
 .gx-bizcard { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .gx-bizcard-icon { flex-shrink: 0; }
-.gx-bizcard-info { flex: 1 1 auto; min-width: 0; }
+.gx-bizcard-info { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 .gx-bizcard-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
 .gx-bizcard-onboard { flex-shrink: 0; }
 @media (max-width: 640px) {
   .gx-bizcard { gap: 10px 12px; }
   .gx-bizcard-info { flex-basis: calc(100% - 54px); }
   .gx-bizcard-meta {
-    width: 100%; flex-direction: row; align-items: center;
-    justify-content: flex-start; gap: 12px; padding-left: 54px;
+    width: 100%; flex-direction: row; align-items: center; flex-wrap: wrap;
+    justify-content: flex-start; gap: 6px 12px; padding-left: 0;
   }
   .gx-bizcard-onboard { width: 100%; justify-content: center; }
+}
+
+/* Short logo + hidden name text on mobile so the top bar never collides */
+.gx-logo-short { display: none; }
+@media (max-width: 640px) {
+  .gx-logo-full { display: none; }
+  .gx-logo-short { display: inline; }
+  .gx-hide-mobile { display: none; }
 }
