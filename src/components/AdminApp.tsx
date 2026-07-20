@@ -2,13 +2,13 @@
 
 import { type CSSProperties, useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Activity, Building2, CheckCircle2, DollarSign, LayoutDashboard, Mail, Menu, Plus, TrendingUp, Users, UserCircle, UserX, type LucideIcon,
+  Activity, Building2, CheckCircle2, DollarSign, KeyRound, LayoutDashboard, Mail, Menu, Plus, TrendingUp, Users, UserCircle, UserX, type LucideIcon,
 } from "lucide-react";
 import { C, h1Style, pageStyle, primaryBtn, STAGE_COLOR, STAGES, TYPES } from "@/lib/theme";
 import type { Row } from "@/lib/types";
 import { signOutAction } from "@/lib/actions";
 import { BizCard, Empty, NavBtn, Panel, SearchBar, Select, Stat, TopBar } from "./ui";
-import { AddAgentModal, DetailModal } from "./Modals";
+import { AddAgentModal, ChangePasswordModal, DetailModal, ResetPasswordModal } from "./Modals";
 
 type AgentInfo = { id: number; name: string; email: string };
 type AgentProgress = {
@@ -45,6 +45,8 @@ const ACTION_LABEL: Record<string, string> = {
   onboard_business: "onboarded",
   account_status_change: "changed status of",
   create_user: "added a user",
+  change_password: "changed their password",
+  reset_password: "reset a password",
 };
 
 function timeAgo(when: string | Date): string {
@@ -81,6 +83,8 @@ export default function AdminApp({
   const [fAgent, setFAgent] = useState("All");
   const [detail, setDetail] = useState<Row | null>(null);
   const [addAgent, setAddAgent] = useState(false);
+  const [changePw, setChangePw] = useState(false);
+  const [resetAgent, setResetAgent] = useState<{ id: number; name: string } | null>(null);
 
   const m = useMemo(() => {
     const won = rows.filter(r => r.stage === "Won");
@@ -122,6 +126,7 @@ export default function AdminApp({
   return (
     <>
       <TopBar name={adminName} subtitle="Admin" onLogout={() => signOutAction()}
+        onChangePassword={() => setChangePw(true)}
         nav={<AdminNav view={view} onSelect={changeView} />} />
 
       <div style={pageStyle}>
@@ -320,6 +325,12 @@ export default function AdminApp({
                       <div style={{ fontSize: 12.5, color: C.muted }}>{rs.length} logged · {won} won</div>
                       <div style={{ fontWeight: 700, fontSize: 14, color: C.green }}>Le {mrr.toLocaleString()}/mo</div>
                     </div>
+                    <button onClick={() => setResetAgent({ id: a.id, name: a.name })} className="gx-bizcard-onboard"
+                      style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 13px", borderRadius: 10,
+                        border: `1.5px solid ${C.line}`, background: "#fff", color: C.muted, fontWeight: 600,
+                        fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                      <KeyRound size={15} /> Reset password
+                    </button>
                   </div>
                 );
               })}
@@ -329,6 +340,8 @@ export default function AdminApp({
       </div>
       {detail && <DetailModal row={detail} onClose={() => setDetail(null)} />}
       {addAgent && <AddAgentModal onClose={() => setAddAgent(false)} />}
+      {changePw && <ChangePasswordModal onClose={() => setChangePw(false)} />}
+      {resetAgent && <ResetPasswordModal agent={resetAgent} onClose={() => setResetAgent(null)} />}
     </>
   );
 }

@@ -7,7 +7,9 @@ export type AuditAction =
   | "update_business"
   | "onboard_business"
   | "account_status_change"
-  | "create_user";
+  | "create_user"
+  | "change_password"
+  | "reset_password";
 
 type AuditEntry = {
   userId: number | null;

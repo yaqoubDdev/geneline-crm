@@ -71,6 +71,85 @@ export async function createAgent(
   return { ok: true, name };
 }
 
+/* ---------------- Passwords ---------------- */
+export type PasswordFormState = { error?: string; ok?: boolean };
+
+/** Any signed-in user changes their own password (must know the current one). */
+export async function changeOwnPassword(
+  _prev: PasswordFormState,
+  formData: FormData
+): Promise<PasswordFormState> {
+  const session = await auth();
+  if (!session?.user) return { error: "You're not signed in." };
+
+  const current = String(formData.get("current") ?? "");
+  const next = String(formData.get("next") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+
+  if (!current || !next) return { error: "Fill in every field." };
+  if (next.length < 6) return { error: "New password must be at least 6 characters." };
+  if (next !== confirm) return { error: "New passwords don't match." };
+
+  const userId = Number(session.user.id);
+  const [u] = await db
+    .select({ passwordHash: users.passwordHash })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (!u) return { error: "Account not found." };
+
+  if (!(await bcrypt.compare(current, u.passwordHash))) {
+    return { error: "Your current password is incorrect." };
+  }
+  if (await bcrypt.compare(next, u.passwordHash)) {
+    return { error: "New password must be different from the current one." };
+  }
+
+  await db.update(users).set({ passwordHash: await bcrypt.hash(next, 10) }).where(eq(users.id, userId));
+
+  await recordAudit({
+    userId,
+    actorName: session.user.name ?? session.user.email ?? "Unknown",
+    action: "change_password",
+    details: "Changed their own password",
+  });
+
+  return { ok: true };
+}
+
+/** Admin resets any user's password (no need for the old one). */
+export async function resetUserPassword(
+  _prev: PasswordFormState,
+  formData: FormData
+): Promise<PasswordFormState> {
+  const session = await auth();
+  if (session?.user?.role !== "admin") return { error: "Only admins can reset passwords." };
+
+  const targetId = Number(formData.get("userId"));
+  const next = String(formData.get("next") ?? "");
+  if (!targetId) return { error: "Missing user." };
+  if (next.length < 6) return { error: "Password must be at least 6 characters." };
+
+  const [target] = await db
+    .select({ id: users.id, name: users.name, email: users.email })
+    .from(users)
+    .where(eq(users.id, targetId))
+    .limit(1);
+  if (!target) return { error: "That user no longer exists." };
+
+  await db.update(users).set({ passwordHash: await bcrypt.hash(next, 10) }).where(eq(users.id, targetId));
+
+  await recordAudit({
+    userId: Number(session.user.id),
+    actorName: session.user.name ?? session.user.email ?? "Admin",
+    action: "reset_password",
+    details: `Reset password for ${target.name} <${target.email}>`,
+  });
+
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
 /* ---------------- Business CRUD ---------------- */
 type SaveInput = {
   dbId?: number;

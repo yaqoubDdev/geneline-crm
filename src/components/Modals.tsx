@@ -4,11 +4,11 @@ import { useEffect, useState, useTransition } from "react";
 import { useActionState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  CalendarClock, CheckCircle2, ChevronRight, Clock, DollarSign, KeyRound, Mail, MapPin, Phone, UserCircle, XCircle,
+  CalendarClock, CheckCircle2, ChevronRight, Clock, Copy, DollarSign, KeyRound, Mail, MapPin, Phone, RefreshCw, UserCircle, XCircle,
 } from "lucide-react";
 import { C, ghostBtn, inpStyle, primaryBtn, STAGES, STAGE_COLOR, TYPES } from "@/lib/theme";
 import type { AccountStatus, BizType, Row, Stage } from "@/lib/types";
-import { createAgent, onboardBusiness, saveBusiness, setAccountStatus } from "@/lib/actions";
+import { changeOwnPassword, createAgent, onboardBusiness, resetUserPassword, saveBusiness, setAccountStatus } from "@/lib/actions";
 import { queueNewBusiness } from "@/lib/offline/queue";
 import { Field, FormRow, Info, Modal, ModalFooter, Tag, TYPE_ICON } from "./ui";
 
@@ -242,6 +242,120 @@ export function AddAgentModal({ onClose }: { onClose: () => void }) {
           <button type="button" style={ghostBtn} onClick={onClose} disabled={pending}>Cancel</button>
           <button type="submit" style={{ ...primaryBtn, opacity: pending ? .6 : 1 }} disabled={pending}>
             {pending ? "Creating…" : "Create user"}
+          </button>
+        </ModalFooter>
+      </form>
+    </Modal>
+  );
+}
+
+/* ---------------- ChangePasswordModal: any user changes their own ---------------- */
+export function ChangePasswordModal({ onClose }: { onClose: () => void }) {
+  const [state, formAction, pending] = useActionState(changeOwnPassword, {});
+
+  if (state.ok) {
+    return (
+      <Modal onClose={onClose} title="Password changed" accent={C.greenBright}>
+        <div style={{ padding: "6px 2px 4px", fontSize: 14, color: C.ink, lineHeight: 1.55 }}>
+          Your password has been updated. Use it the next time you sign in.
+        </div>
+        <ModalFooter><button style={primaryBtn} onClick={onClose}>Done</button></ModalFooter>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal onClose={onClose} title="Change password">
+      <form action={formAction}>
+        <Field label="Current password">
+          <input name="current" type="password" style={inpStyle} autoComplete="current-password" />
+        </Field>
+        <Field label="New password">
+          <input name="next" type="password" style={inpStyle} placeholder="At least 6 characters" autoComplete="new-password" />
+        </Field>
+        <Field label="Confirm new password">
+          <input name="confirm" type="password" style={inpStyle} autoComplete="new-password" />
+        </Field>
+        {state.error && (
+          <p style={{ color: C.clay, fontSize: 13, fontWeight: 600, margin: "14px 0 0" }}>{state.error}</p>
+        )}
+        <ModalFooter>
+          <button type="button" style={ghostBtn} onClick={onClose} disabled={pending}>Cancel</button>
+          <button type="submit" style={{ ...primaryBtn, opacity: pending ? .6 : 1 }} disabled={pending}>
+            {pending ? "Saving…" : "Update password"}
+          </button>
+        </ModalFooter>
+      </form>
+    </Modal>
+  );
+}
+
+/* ---------------- ResetPasswordModal: admin resets an agent's password ---------------- */
+// Unambiguous alphabet (no O/0, I/l/1) so shared passwords are easy to type on a phone.
+const PW_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+function generatePassword(len = 12): string {
+  const arr = new Uint32Array(len);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, (n) => PW_CHARS[n % PW_CHARS.length]).join("");
+}
+
+export function ResetPasswordModal({
+  agent, onClose,
+}: { agent: { id: number; name: string }; onClose: () => void }) {
+  const router = useRouter();
+  const [state, formAction, pending] = useActionState(resetUserPassword, {});
+  const [pw, setPw] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => { if (state.ok) router.refresh(); }, [state.ok, router]);
+
+  if (state.ok) {
+    return (
+      <Modal onClose={onClose} title="Password reset" badge={agent.name} accent={C.greenBright}>
+        <div style={{ fontSize: 14, color: C.ink, lineHeight: 1.55, marginBottom: 14 }}>
+          {agent.name}&apos;s new password is ready. Copy it and send it over now — it won&apos;t be shown again.
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", background: C.paper,
+          borderRadius: 11, padding: "12px 14px" }}>
+          <code style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: C.ink,
+            wordBreak: "break-all", fontFamily: "'Archivo',monospace" }}>{pw}</code>
+          <button onClick={() => { navigator.clipboard?.writeText(pw); setCopied(true); }}
+            style={{ ...ghostBtn, padding: "8px 12px", display: "inline-flex", alignItems: "center",
+              gap: 6, flexShrink: 0, color: copied ? C.green : C.muted }}>
+            <Copy size={14} /> {copied ? "Copied" : "Copy"}
+          </button>
+        </div>
+        <ModalFooter><button style={primaryBtn} onClick={onClose}>Done</button></ModalFooter>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal onClose={onClose} title="Reset password" badge={agent.name}>
+      <form action={formAction}>
+        <input type="hidden" name="userId" value={agent.id} />
+        <Field label="New password">
+          <div style={{ display: "flex", gap: 8 }}>
+            <input name="next" type="text" style={{ ...inpStyle, flex: 1, minWidth: 0 }} value={pw}
+              onChange={e => setPw(e.target.value)} placeholder="Type one or generate" autoComplete="off" />
+            <button type="button" onClick={() => setPw(generatePassword())}
+              style={{ ...ghostBtn, whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <RefreshCw size={15} /> Generate
+            </button>
+          </div>
+        </Field>
+        <p style={{ fontSize: 12, color: C.muted, margin: "2px 0 0" }}>
+          {agent.name} signs in with their email and this new password. Share it over WhatsApp.
+        </p>
+        {state.error && (
+          <p style={{ color: C.clay, fontSize: 13, fontWeight: 600, margin: "14px 0 0" }}>{state.error}</p>
+        )}
+        <ModalFooter>
+          <button type="button" style={ghostBtn} onClick={onClose} disabled={pending}>Cancel</button>
+          <button type="submit" style={{ ...primaryBtn,
+            opacity: pw.length >= 6 && !pending ? 1 : .5,
+            pointerEvents: pw.length >= 6 && !pending ? "auto" : "none" }}>
+            <KeyRound size={16} /> {pending ? "Resetting…" : "Reset password"}
           </button>
         </ModalFooter>
       </form>

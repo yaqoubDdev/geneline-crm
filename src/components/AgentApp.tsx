@@ -8,7 +8,7 @@ import { signOutAction } from "@/lib/actions";
 import { useOffline } from "@/lib/offline/useOffline";
 import type { PendingBusiness } from "@/lib/offline/queue";
 import { BizCard, Empty, SearchBar, Stat, TopBar } from "./ui";
-import { OnboardModal, VisitModal } from "./Modals";
+import { ChangePasswordModal, OnboardModal, VisitModal } from "./Modals";
 
 type DailyProgress = { touchedToday: number; createdToday: number; target: number };
 
@@ -18,6 +18,7 @@ export default function AgentApp({
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<Row | "new" | null>(null);
   const [onboard, setOnboard] = useState<Row | null>(null);
+  const [changePw, setChangePw] = useState(false);
   const { pending, discard } = useOffline();
 
   const filtered = rows.filter(r => r.name.toLowerCase().includes(q.toLowerCase()));
@@ -40,7 +41,8 @@ export default function AgentApp({
 
   return (
     <>
-      <TopBar name={agentName} subtitle="Field agent" onLogout={() => signOutAction()} />
+      <TopBar name={agentName} subtitle="Field agent" onLogout={() => signOutAction()}
+        onChangePassword={() => setChangePw(true)} />
       <div style={pageStyle}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end",
           flexWrap: "wrap", gap: 14, marginBottom: 20 }}>
@@ -90,6 +92,7 @@ export default function AgentApp({
 
       {editing && <VisitModal row={editing === "new" ? null : editing} onClose={() => setEditing(null)} />}
       {onboard && <OnboardModal row={onboard} onClose={() => setOnboard(null)} />}
+      {changePw && <ChangePasswordModal onClose={() => setChangePw(false)} />}
     </>
   );
 }

@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import {
-  Building2, Briefcase, Filter, LogOut, Phone, Search, Store,
+  Building2, Briefcase, Filter, KeyRound, LogOut, Phone, Search, Store,
   Utensils, UserCircle, X, type LucideIcon,
 } from "lucide-react";
 import { C, inpStyle, lblStyle, STAGE_COLOR } from "@/lib/theme";
@@ -16,11 +16,12 @@ export const TYPE_ICON: Record<string, LucideIcon> = {
 
 /* ---------------- TopBar ---------------- */
 export function TopBar({
-  name, subtitle, onLogout, nav,
+  name, subtitle, onLogout, onChangePassword, nav,
 }: {
   name: string;
   subtitle: string;
   onLogout: () => void;
+  onChangePassword?: () => void;
   nav?: ReactNode;
 }) {
   return (
@@ -43,6 +44,13 @@ export function TopBar({
             <div style={{ fontSize: 13, fontWeight: 600 }}>{name}</div>
             <div style={{ fontSize: 11, color: "rgba(255,255,255,.6)" }}>{subtitle}</div>
           </div>
+          {onChangePassword && (
+            <button onClick={onChangePassword} title="Change password" style={{ width: 34, height: 34, borderRadius: 9,
+              border: "1px solid rgba(255,255,255,.18)", background: "rgba(255,255,255,.07)",
+              color: "#fff", cursor: "pointer", display: "grid", placeItems: "center" }}>
+              <KeyRound size={16} />
+            </button>
+          )}
           <button onClick={onLogout} title="Sign out" style={{ width: 34, height: 34, borderRadius: 9,
             border: "1px solid rgba(255,255,255,.18)", background: "rgba(255,255,255,.07)",
             color: "#fff", cursor: "pointer", display: "grid", placeItems: "center" }}>
