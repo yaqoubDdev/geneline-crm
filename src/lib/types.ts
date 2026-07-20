@@ -1,10 +1,12 @@
 export type Stage = "New" | "Interested" | "Reluctant" | "Absent" | "Won" | "Lost";
-export type BizType =
-  | "Salon" | "Barbershop" | "Restaurant" | "Bar / Lounge" | "Shop / Retail"
-  | "Boutique / Fashion" | "Supermarket" | "Pharmacy" | "Clinic / Health"
-  | "Hotel / Guesthouse" | "School" | "Hardware" | "Electronics"
-  | "Auto / Mechanic" | "Real Estate" | "Corporate" | "NGO" | "Other";
+// Business types are admin-managed (stored in business_types), so this is just a name.
+export type BizType = string;
 export type AccountStatus = "Pending" | "Active" | "Paused" | "Churned";
+
+/** A selectable business type (agent-facing dropdowns). */
+export type TypeOption = { name: string; monthlyFee: number; icon: string };
+/** A business type with admin fields (management view). */
+export type TypeAdmin = TypeOption & { id: number; active: boolean; usage: number };
 
 export type Account = {
   ownerName: string;
@@ -22,6 +24,7 @@ export type Row = {
   contactName: string | null; // owner / contact person
   contact: string;
   type: BizType;
+  typeIcon: string | null; // lucide icon key for this business's type
   stage: Stage;
   objection: string | null;
   lostReason: string | null;

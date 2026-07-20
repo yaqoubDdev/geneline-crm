@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Building2, CalendarClock, CheckCircle2, CloudUpload, Plus, Target, TrendingUp } from "lucide-react";
 import { C, h1Style, pageStyle, primaryBtn } from "@/lib/theme";
-import type { Row } from "@/lib/types";
+import type { Row, TypeOption } from "@/lib/types";
 import { signOutAction } from "@/lib/actions";
 import { useOffline } from "@/lib/offline/useOffline";
 import type { PendingBusiness } from "@/lib/offline/queue";
@@ -13,8 +13,8 @@ import { ChangePasswordModal, OnboardModal, VisitModal } from "./Modals";
 type DailyProgress = { touchedToday: number; createdToday: number; target: number };
 
 export default function AgentApp({
-  rows, progress, agentName,
-}: { rows: Row[]; progress: DailyProgress; agentName: string }) {
+  rows, progress, types, agentName,
+}: { rows: Row[]; progress: DailyProgress; types: TypeOption[]; agentName: string }) {
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<Row | "new" | null>(null);
   const [onboard, setOnboard] = useState<Row | null>(null);
@@ -90,8 +90,8 @@ export default function AgentApp({
         </div>
       </div>
 
-      {editing && <VisitModal row={editing === "new" ? null : editing} onClose={() => setEditing(null)} />}
-      {onboard && <OnboardModal row={onboard} onClose={() => setOnboard(null)} />}
+      {editing && <VisitModal row={editing === "new" ? null : editing} types={types} onClose={() => setEditing(null)} />}
+      {onboard && <OnboardModal row={onboard} types={types} onClose={() => setOnboard(null)} />}
       {changePw && <ChangePasswordModal onClose={() => setChangePw(false)} />}
     </>
   );

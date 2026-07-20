@@ -23,28 +23,6 @@ export const STAGE_COLOR: Record<string, string> = {
   Lost: "#B0483C",
 };
 
-// price = the default monthly fee (Le/mo) suggested at onboarding; editable per deal.
-export const TYPES = [
-  { key: "Salon", price: 500 },
-  { key: "Barbershop", price: 500 },
-  { key: "Restaurant", price: 500 },
-  { key: "Bar / Lounge", price: 500 },
-  { key: "Shop / Retail", price: 500 },
-  { key: "Boutique / Fashion", price: 500 },
-  { key: "Supermarket", price: 1000 },
-  { key: "Pharmacy", price: 500 },
-  { key: "Clinic / Health", price: 1000 },
-  { key: "Hotel / Guesthouse", price: 1000 },
-  { key: "School", price: 1000 },
-  { key: "Hardware", price: 500 },
-  { key: "Electronics", price: 500 },
-  { key: "Auto / Mechanic", price: 500 },
-  { key: "Real Estate", price: 1000 },
-  { key: "Corporate", price: 1500 },
-  { key: "NGO", price: 1000 },
-  { key: "Other", price: 500 },
-] as const;
-
 /* ============================ STYLE TOKENS ============================ */
 export const pageStyle: CSSProperties = {
   maxWidth: 1080, margin: "0 auto",

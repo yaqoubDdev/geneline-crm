@@ -1,8 +1,8 @@
 import "server-only";
-import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { auditLogs, businesses, onboardingAccounts, users } from "@/db/schema";
-import type { Row } from "@/lib/types";
+import { auditLogs, businesses, businessTypes, onboardingAccounts, users } from "@/db/schema";
+import type { Row, TypeAdmin, TypeOption } from "@/lib/types";
 
 /** Businesses each agent must "talk to" per day. */
 export const DAILY_TARGET = 15;
@@ -16,6 +16,7 @@ const selection = {
   contactName: businesses.contactName,
   contact: businesses.contact,
   type: businesses.type,
+  typeIcon: businessTypes.icon,
   stage: businesses.stage,
   objection: businesses.objection,
   lostReason: businesses.lostReason,
@@ -32,7 +33,7 @@ const selection = {
 
 type RawRow = {
   dbId: number; code: string; name: string; address: string | null; contactName: string | null; contact: string;
-  type: Row["type"]; stage: Row["stage"]; objection: string | null; lostReason: string | null;
+  type: Row["type"]; typeIcon: string | null; stage: Row["stage"]; objection: string | null; lostReason: string | null;
   nextAction: string | null; followUpDate: string | null; monthlyFee: number | null; onboarded: boolean;
   agent: string; accOwner: string | null; accEmail: string | null; accPhone: string | null;
   accStatus: NonNullable<Row["account"]>["status"] | null;
@@ -47,6 +48,7 @@ function normalize(r: RawRow): Row {
     contactName: r.contactName,
     contact: r.contact,
     type: r.type,
+    typeIcon: r.typeIcon,
     stage: r.stage,
     objection: r.objection,
     lostReason: r.lostReason,
@@ -69,6 +71,7 @@ export async function getAllRows(): Promise<Row[]> {
     .from(businesses)
     .innerJoin(users, eq(businesses.agentId, users.id))
     .leftJoin(onboardingAccounts, eq(onboardingAccounts.businessId, businesses.id))
+    .leftJoin(businessTypes, eq(businessTypes.name, businesses.type))
     .orderBy(desc(businesses.createdAt));
   return rows.map(normalize);
 }
@@ -80,9 +83,40 @@ export async function getRowsForAgent(agentId: number): Promise<Row[]> {
     .from(businesses)
     .innerJoin(users, eq(businesses.agentId, users.id))
     .leftJoin(onboardingAccounts, eq(onboardingAccounts.businessId, businesses.id))
+    .leftJoin(businessTypes, eq(businessTypes.name, businesses.type))
     .where(eq(businesses.agentId, agentId))
     .orderBy(desc(businesses.createdAt));
   return rows.map(normalize);
+}
+
+/* ---------------- Business types ---------------- */
+
+/** Active types for the agent-facing pickers (name + default fee + icon). */
+export async function getActiveBusinessTypes(): Promise<TypeOption[]> {
+  return db
+    .select({ name: businessTypes.name, monthlyFee: businessTypes.monthlyFee, icon: businessTypes.icon })
+    .from(businessTypes)
+    .where(eq(businessTypes.active, true))
+    .orderBy(asc(businessTypes.sortOrder), asc(businessTypes.name));
+}
+
+/** All types with usage counts (admin management view). */
+export async function getAllBusinessTypes(): Promise<TypeAdmin[]> {
+  const usageExpr = sql<number>`count(${businesses.id})`;
+  const rows = await db
+    .select({
+      id: businessTypes.id,
+      name: businessTypes.name,
+      monthlyFee: businessTypes.monthlyFee,
+      icon: businessTypes.icon,
+      active: businessTypes.active,
+      usage: usageExpr,
+    })
+    .from(businessTypes)
+    .leftJoin(businesses, eq(businesses.type, businessTypes.name))
+    .groupBy(businessTypes.id)
+    .orderBy(asc(businessTypes.sortOrder), asc(businessTypes.name));
+  return rows.map((r) => ({ ...r, usage: Number(r.usage) }));
 }
 
 export type AgentInfo = { id: number; name: string; email: string };

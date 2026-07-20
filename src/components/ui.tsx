@@ -2,37 +2,31 @@
 
 import type { ReactNode } from "react";
 import {
-  Briefcase, Building2, Car, Cross, Filter, GraduationCap, HandHeart, Hammer, Home, Hotel,
-  KeyRound, LogOut, Phone, Scissors, Search, Shirt, ShoppingBag, ShoppingCart, Smartphone,
-  Stethoscope, Utensils, UserCircle, Wine, Wrench, X, type LucideIcon,
+  Banknote, Briefcase, Building2, Bus, Camera, Car, Church, Coffee, Cross, Dumbbell,
+  Filter, Fish, Fuel, GraduationCap, HandHeart, Hammer, Heart, Home, Hotel, KeyRound,
+  Landmark, LogOut, Package, Phone, Scissors, Search, Shirt, ShoppingBag, ShoppingCart,
+  Smartphone, Sparkles, Stethoscope, Store, Utensils, UserCircle, Wheat, Wine, Wrench, X,
+  type LucideIcon,
 } from "lucide-react";
 import { C, inpStyle, lblStyle, STAGE_COLOR } from "@/lib/theme";
 import type { Row } from "@/lib/types";
 
-export const TYPE_ICON: Record<string, LucideIcon> = {
-  Salon: Scissors,
-  Barbershop: Scissors,
-  Restaurant: Utensils,
-  "Bar / Lounge": Wine,
-  "Shop / Retail": ShoppingBag,
-  "Boutique / Fashion": Shirt,
-  Supermarket: ShoppingCart,
-  Pharmacy: Cross,
-  "Clinic / Health": Stethoscope,
-  "Hotel / Guesthouse": Hotel,
-  School: GraduationCap,
-  Hardware: Hammer,
-  Electronics: Smartphone,
-  "Auto / Mechanic": Wrench,
-  "Real Estate": Home,
-  Corporate: Briefcase,
-  NGO: HandHeart,
-  Other: Building2,
+/**
+ * The fixed set of icons an admin can pick from when creating a business type.
+ * Keys are stored in business_types.icon; generic/common ones are listed first
+ * so the picker reads sensibly.
+ */
+export const ICON_LIBRARY: Record<string, LucideIcon> = {
+  Building2, Store, ShoppingBag, ShoppingCart, Shirt, Scissors, Utensils, Coffee, Wine,
+  Cross, Stethoscope, Heart, Hotel, GraduationCap, Hammer, Wrench, Car, Fuel, Smartphone,
+  Home, Briefcase, Landmark, Banknote, HandHeart, Church, Dumbbell, Camera, Package, Wheat,
+  Fish, Bus, Sparkles,
 };
+export const ICON_CHOICES = Object.keys(ICON_LIBRARY);
 
-/** Icon for a business type, with a safe fallback for any unmapped value. */
-export function typeIcon(type: string): LucideIcon {
-  return TYPE_ICON[type] ?? Building2;
+/** Resolve a stored icon key to a component, with a safe generic fallback. */
+export function iconFor(key?: string | null): LucideIcon {
+  return (key && ICON_LIBRARY[key]) || Building2;
 }
 
 /* ---------------- TopBar ---------------- */
@@ -106,7 +100,7 @@ export function BizCard({
   onOnboard?: (() => void) | null;
   showAgent?: boolean;
 }) {
-  const Icon = typeIcon(r.type);
+  const Icon = iconFor(r.typeIcon);
   return (
     <div onClick={onClick} className="gx-bizcard" style={{ background: C.card, border: `1px solid ${C.line}`,
       borderRadius: 14, padding: "14px 16px", cursor: "pointer", transition: "transform .12s, box-shadow .12s" }}

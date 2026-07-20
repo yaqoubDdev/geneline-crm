@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { AuthError } from "next-auth";
 import { auth, signIn, signOut } from "@/auth";
 import { db } from "@/db";
-import { businesses, onboardingAccounts, users } from "@/db/schema";
+import { businesses, businessTypes, onboardingAccounts, users } from "@/db/schema";
 import type { AccountStatus, BizType, Stage } from "@/lib/types";
 import { recordAudit } from "@/lib/audit";
 
@@ -203,6 +203,59 @@ export async function removeAgent(
 
   revalidatePath("/admin");
   return { ok: true };
+}
+
+/* ---------------- Admin: business types ---------------- */
+export type TypeFormState = { error?: string; ok?: boolean; name?: string };
+
+export async function createBusinessType(
+  _prev: TypeFormState,
+  formData: FormData
+): Promise<TypeFormState> {
+  const session = await auth();
+  if (session?.user?.role !== "admin") return { error: "Only admins can add types." };
+
+  const name = String(formData.get("name") ?? "").trim();
+  const monthlyFee = Number(formData.get("monthlyFee") ?? 0);
+  const icon = String(formData.get("icon") ?? "").trim() || "Building2";
+
+  if (!name) return { error: "Give the type a name." };
+  if (name.length > 40) return { error: "That name is too long." };
+  if (!Number.isFinite(monthlyFee) || monthlyFee < 0) return { error: "Enter a valid default fee." };
+
+  // Case-insensitive uniqueness so "Salon" and "salon" don't both exist.
+  const [existing] = await db
+    .select({ id: businessTypes.id })
+    .from(businessTypes)
+    .where(sql`lower(${businessTypes.name}) = ${name.toLowerCase()}`)
+    .limit(1);
+  if (existing) return { error: "That type already exists." };
+
+  const [{ max }] = await db
+    .select({ max: sql<number>`coalesce(max(${businessTypes.sortOrder}), 0)` })
+    .from(businessTypes);
+
+  await db.insert(businessTypes).values({
+    name,
+    monthlyFee: Math.round(monthlyFee),
+    icon,
+    sortOrder: Number(max) + 1,
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/agent");
+  return { ok: true, name };
+}
+
+export async function setBusinessTypeActive(id: number, active: boolean): Promise<{ error?: string }> {
+  const session = await auth();
+  if (session?.user?.role !== "admin") return { error: "Only admins can change types." };
+
+  await db.update(businessTypes).set({ active }).where(eq(businessTypes.id, id));
+
+  revalidatePath("/admin");
+  revalidatePath("/agent");
+  return {};
 }
 
 /* ---------------- Business CRUD ---------------- */

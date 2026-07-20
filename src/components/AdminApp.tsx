@@ -1,14 +1,15 @@
 "use client";
 
-import { type CSSProperties, useCallback, useEffect, useMemo, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
-  Activity, Building2, CheckCircle2, DollarSign, KeyRound, LayoutDashboard, Mail, Menu, Plus, Trash2, TrendingUp, Users, UserCircle, UserX, type LucideIcon,
+  Activity, Building2, CheckCircle2, DollarSign, KeyRound, LayoutDashboard, Mail, Menu, Plus, Tags, Trash2, TrendingUp, Users, UserCircle, UserX, type LucideIcon,
 } from "lucide-react";
-import { C, h1Style, pageStyle, primaryBtn, STAGE_COLOR, STAGES, TYPES } from "@/lib/theme";
-import type { Row } from "@/lib/types";
-import { signOutAction } from "@/lib/actions";
-import { BizCard, Empty, NavBtn, Panel, SearchBar, Select, Stat, TopBar } from "./ui";
-import { AddAgentModal, ChangePasswordModal, DetailModal, RemoveAgentModal, ResetPasswordModal } from "./Modals";
+import { C, h1Style, pageStyle, primaryBtn, STAGE_COLOR, STAGES } from "@/lib/theme";
+import type { Row, TypeAdmin } from "@/lib/types";
+import { setBusinessTypeActive, signOutAction } from "@/lib/actions";
+import { BizCard, Empty, iconFor, NavBtn, Panel, SearchBar, Select, Stat, TopBar } from "./ui";
+import { AddAgentModal, AddTypeModal, ChangePasswordModal, DetailModal, RemoveAgentModal, ResetPasswordModal } from "./Modals";
 
 const UNASSIGNED_EMAIL = "unassigned@geneline-x.com";
 
@@ -21,13 +22,14 @@ type AuditEntry = {
   businessCode: string | null; businessName: string | null; details: string | null;
   createdAt: string | Date;
 };
-type View = "dashboard" | "monitoring" | "all" | "agents";
+type View = "dashboard" | "monitoring" | "all" | "agents" | "types";
 
 const TABS: { key: View; label: string; icon: LucideIcon }[] = [
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { key: "monitoring", label: "Monitoring", icon: Activity },
   { key: "all", label: "All businesses", icon: Building2 },
   { key: "agents", label: "Agents", icon: Users },
+  { key: "types", label: "Types", icon: Tags },
 ];
 
 // Read the active tab from the URL so a reload keeps you where you were.
@@ -69,8 +71,8 @@ const badge: CSSProperties = {
 };
 
 export default function AdminApp({
-  rows, agentList, progress, audit, adminName,
-}: { rows: Row[]; agentList: AgentInfo[]; progress: AgentProgress[]; audit: AuditEntry[]; adminName: string }) {
+  rows, agentList, progress, audit, types, adminName,
+}: { rows: Row[]; agentList: AgentInfo[]; progress: AgentProgress[]; audit: AuditEntry[]; types: TypeAdmin[]; adminName: string }) {
   const agents = agentList.map((a) => a.name);
   const [view, setView] = useState<View>("dashboard");
   // Restore the tab from the URL on mount; keep the URL in sync as it changes.
@@ -89,6 +91,7 @@ export default function AdminApp({
   const [changePw, setChangePw] = useState(false);
   const [resetAgent, setResetAgent] = useState<{ id: number; name: string } | null>(null);
   const [removeAgentInfo, setRemoveAgentInfo] = useState<{ id: number; name: string; bizCount: number } | null>(null);
+  const [addType, setAddType] = useState(false);
 
   const m = useMemo(() => {
     const won = rows.filter(r => r.stage === "Won");
@@ -288,7 +291,7 @@ export default function AdminApp({
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
               <div style={{ flex: "1 1 220px" }}><SearchBar q={q} setQ={setQ} placeholder="Search all businesses…" /></div>
-              <Select value={fType} onChange={setFType} opts={["All", ...TYPES.map(t => t.key)]} />
+              <Select value={fType} onChange={setFType} opts={["All", ...types.map(t => t.name)]} />
               <Select value={fAgent} onChange={setFAgent} opts={["All", ...agents]} icon={UserCircle} />
             </div>
             <div style={{ display: "grid", gap: 10 }}>
@@ -296,7 +299,7 @@ export default function AdminApp({
               {filtered.map(r => <BizCard key={r.dbId} r={r} showAgent onClick={() => setDetail(r)} />)}
             </div>
           </>
-        ) : (
+        ) : view === "agents" ? (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
               <div>
@@ -349,10 +352,13 @@ export default function AdminApp({
               })}
             </div>
           </>
+        ) : (
+          <TypesView types={types} onAdd={() => setAddType(true)} />
         )}
       </div>
       {detail && <DetailModal row={detail} onClose={() => setDetail(null)} />}
       {addAgent && <AddAgentModal onClose={() => setAddAgent(false)} />}
+      {addType && <AddTypeModal onClose={() => setAddType(false)} />}
       {changePw && <ChangePasswordModal onClose={() => setChangePw(false)} />}
       {resetAgent && <ResetPasswordModal agent={resetAgent} onClose={() => setResetAgent(null)} />}
       {removeAgentInfo && (
@@ -360,6 +366,60 @@ export default function AdminApp({
           targets={agentList.filter(a => a.id !== removeAgentInfo.id)}
           onClose={() => setRemoveAgentInfo(null)} />
       )}
+    </>
+  );
+}
+
+/* Types management: list every business type, add new ones, hide/show them. */
+function TypesView({ types, onAdd }: { types: TypeAdmin[]; onAdd: () => void }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const toggle = (id: number, active: boolean) =>
+    start(async () => { await setBusinessTypeActive(id, active); router.refresh(); });
+
+  const activeCount = types.filter(t => t.active).length;
+  return (
+    <>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
+        <div>
+          <h1 style={h1Style}>Business types</h1>
+          <p style={{ color: C.muted, margin: "4px 0 0", fontSize: 14 }}>
+            {activeCount} active. New types show up in the agents&apos; dropdown right away.</p>
+        </div>
+        <button onClick={onAdd} style={primaryBtn}>
+          <Plus size={17} strokeWidth={2.5} /> Add type
+        </button>
+      </div>
+      <div style={{ display: "grid", gap: 10 }}>
+        {types.length === 0 && <Empty text="No types yet. Add your first one." />}
+        {types.map(t => {
+          const Icon = iconFor(t.icon);
+          return (
+            <div key={t.id} className="gx-bizcard" style={{ background: C.card, border: `1px solid ${C.line}`,
+              borderRadius: 14, padding: "14px 16px", opacity: t.active ? 1 : .62 }}>
+              <div className="gx-bizcard-icon" style={{ width: 42, height: 42, borderRadius: 11, background: C.paper,
+                display: "grid", placeItems: "center", color: C.green }}><Icon size={20} /></div>
+              <div className="gx-bizcard-info">
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontWeight: 700, fontSize: 15, color: C.ink }}>{t.name}</span>
+                  {!t.active && <span style={{ fontSize: 11, fontWeight: 700, color: C.muted,
+                    background: C.paper, padding: "2px 7px", borderRadius: 6 }}>Hidden</span>}
+                </div>
+                <div style={{ fontSize: 13, color: C.muted, marginTop: 3 }}>
+                  Le {t.monthlyFee.toLocaleString()}/mo default · {t.usage} {t.usage === 1 ? "business" : "businesses"}
+                </div>
+              </div>
+              <button onClick={() => toggle(t.id, !t.active)} disabled={pending} className="gx-bizcard-onboard"
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 13px", borderRadius: 10,
+                  border: `1.5px solid ${C.line}`, background: "#fff", color: t.active ? C.clay : C.green,
+                  fontWeight: 600, fontSize: 13, cursor: pending ? "default" : "pointer",
+                  fontFamily: "inherit", opacity: pending ? .6 : 1 }}>
+                {t.active ? "Deactivate" : "Activate"}
+              </button>
+            </div>
+          );
+        })}
+      </div>
     </>
   );
 }

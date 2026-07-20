@@ -6,16 +6,18 @@ import { useRouter } from "next/navigation";
 import {
   CalendarClock, CheckCircle2, ChevronRight, Clock, Copy, DollarSign, KeyRound, Mail, MapPin, Phone, RefreshCw, Trash2, UserCircle, XCircle,
 } from "lucide-react";
-import { C, ghostBtn, inpStyle, primaryBtn, STAGES, STAGE_COLOR, TYPES } from "@/lib/theme";
-import type { AccountStatus, BizType, Row, Stage } from "@/lib/types";
-import { changeOwnPassword, createAgent, onboardBusiness, removeAgent, resetUserPassword, saveBusiness, setAccountStatus } from "@/lib/actions";
+import { C, ghostBtn, inpStyle, primaryBtn, STAGES, STAGE_COLOR } from "@/lib/theme";
+import type { AccountStatus, BizType, Row, Stage, TypeOption } from "@/lib/types";
+import { changeOwnPassword, createAgent, createBusinessType, onboardBusiness, removeAgent, resetUserPassword, saveBusiness, setAccountStatus } from "@/lib/actions";
+import { queueNewBusiness } from "@/lib/offline/queue";
+import { Field, FormRow, ICON_CHOICES, iconFor, Info, Modal, ModalFooter, Tag } from "./ui";
 
 const UNASSIGNED_EMAIL = "unassigned@geneline-x.com";
-import { queueNewBusiness } from "@/lib/offline/queue";
-import { Field, FormRow, Info, Modal, ModalFooter, Tag, typeIcon } from "./ui";
 
 /* ---------------- VisitModal: add / update a business ---------------- */
-export function VisitModal({ row, onClose }: { row: Row | null; onClose: () => void }) {
+export function VisitModal({
+  row, types, onClose,
+}: { row: Row | null; types: TypeOption[]; onClose: () => void }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [f, setF] = useState({
@@ -23,7 +25,7 @@ export function VisitModal({ row, onClose }: { row: Row | null; onClose: () => v
     address: row?.address ?? "",
     contactName: row?.contactName ?? "",
     contact: row?.contact ?? "",
-    type: (row?.type ?? "Salon") as BizType,
+    type: (row?.type ?? types[0]?.name ?? "Other") as BizType,
     stage: (row?.stage ?? "New") as Stage,
     objection: row?.objection ?? "",
     lostReason: row?.lostReason ?? "",
@@ -106,7 +108,9 @@ export function VisitModal({ row, onClose }: { row: Row | null; onClose: () => v
         </Field>
         <Field label="Business type">
           <select style={inpStyle} value={f.type} onChange={e => set("type", e.target.value)}>
-            {TYPES.map(t => <option key={t.key}>{t.key}</option>)}
+            {/* Keep the current value selectable even if its type was later deactivated. */}
+            {row?.type && !types.some(t => t.name === row.type) && <option>{row.type}</option>}
+            {types.map(t => <option key={t.name}>{t.name}</option>)}
           </select>
         </Field>
       </FormRow>
@@ -151,10 +155,12 @@ export function VisitModal({ row, onClose }: { row: Row | null; onClose: () => v
 }
 
 /* ---------------- OnboardModal: set up account for a closed deal ---------------- */
-export function OnboardModal({ row, onClose }: { row: Row; onClose: () => void }) {
+export function OnboardModal({
+  row, types, onClose,
+}: { row: Row; types: TypeOption[]; onClose: () => void }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const defFee = TYPES.find(t => t.key === row.type)?.price ?? 500;
+  const defFee = types.find(t => t.name === row.type)?.monthlyFee ?? 500;
   const [a, setA] = useState({ ownerName: "", email: "", personalPhone: row.contact, password: "" });
   const [fee, setFee] = useState<number>(row.monthlyFee ?? defFee);
   const set = (k: keyof typeof a, v: string) => setA(p => ({ ...p, [k]: v }));
@@ -244,6 +250,61 @@ export function AddAgentModal({ onClose }: { onClose: () => void }) {
           <button type="button" style={ghostBtn} onClick={onClose} disabled={pending}>Cancel</button>
           <button type="submit" style={{ ...primaryBtn, opacity: pending ? .6 : 1 }} disabled={pending}>
             {pending ? "Creating…" : "Create user"}
+          </button>
+        </ModalFooter>
+      </form>
+    </Modal>
+  );
+}
+
+/* ---------------- AddTypeModal: admin creates a business type ---------------- */
+export function AddTypeModal({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
+  const [state, formAction, pending] = useActionState(createBusinessType, {});
+  const [icon, setIcon] = useState(ICON_CHOICES[0]);
+
+  useEffect(() => {
+    if (state.ok) { router.refresh(); onClose(); }
+  }, [state.ok, router, onClose]);
+
+  return (
+    <Modal onClose={onClose} title="Add a business type">
+      <form action={formAction}>
+        <input type="hidden" name="icon" value={icon} />
+        <FormRow>
+          <Field label="Type name">
+            <input name="name" style={inpStyle} placeholder="e.g. Petrol station" autoComplete="off" />
+          </Field>
+          <Field label="Default fee (Le/mo)">
+            <input name="monthlyFee" type="number" min={0} step={100} defaultValue={500} style={inpStyle} />
+          </Field>
+        </FormRow>
+        <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: C.muted, marginBottom: 8 }}>Icon</label>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(44px, 1fr))", gap: 8,
+          maxHeight: 200, overflow: "auto", padding: 2 }}>
+          {ICON_CHOICES.map((key) => {
+            const Icon = iconFor(key);
+            const active = key === icon;
+            return (
+              <button key={key} type="button" onClick={() => setIcon(key)} title={key}
+                style={{ aspectRatio: "1", display: "grid", placeItems: "center", borderRadius: 10,
+                  cursor: "pointer", border: `1.5px solid ${active ? C.green : C.line}`,
+                  background: active ? C.green : "#fff", color: active ? "#fff" : C.muted }}>
+                <Icon size={18} />
+              </button>
+            );
+          })}
+        </div>
+        <p style={{ fontSize: 12, color: C.muted, margin: "10px 0 0" }}>
+          New types appear in the agents&apos; business dropdown right away. The fee is just a default — editable per deal.
+        </p>
+        {state.error && (
+          <p style={{ color: C.clay, fontSize: 13, fontWeight: 600, margin: "14px 0 0" }}>{state.error}</p>
+        )}
+        <ModalFooter>
+          <button type="button" style={ghostBtn} onClick={onClose} disabled={pending}>Cancel</button>
+          <button type="submit" style={{ ...primaryBtn, opacity: pending ? .6 : 1 }} disabled={pending}>
+            {pending ? "Adding…" : "Add type"}
           </button>
         </ModalFooter>
       </form>
@@ -433,7 +494,7 @@ const STATUS_COLOR: Record<AccountStatus, string> = {
 };
 
 export function DetailModal({ row, onClose }: { row: Row; onClose: () => void }) {
-  const Icon = typeIcon(row.type);
+  const Icon = iconFor(row.typeIcon);
   const router = useRouter();
   const [pending, start] = useTransition();
   const changeStatus = (s: AccountStatus) =>

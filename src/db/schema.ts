@@ -13,26 +13,6 @@ import {
 
 /* ---------- Enums ---------- */
 export const roleEnum = pgEnum("role", ["agent", "admin"]);
-export const businessTypeEnum = pgEnum("business_type", [
-  "Salon",
-  "Barbershop",
-  "Restaurant",
-  "Bar / Lounge",
-  "Shop / Retail",
-  "Boutique / Fashion",
-  "Supermarket",
-  "Pharmacy",
-  "Clinic / Health",
-  "Hotel / Guesthouse",
-  "School",
-  "Hardware",
-  "Electronics",
-  "Auto / Mechanic",
-  "Real Estate",
-  "Corporate",
-  "NGO",
-  "Other",
-]);
 export const stageEnum = pgEnum("stage", [
   "New",
   "Interested",
@@ -61,6 +41,20 @@ export const auditActionEnum = pgEnum("audit_action", [
 /* ---------- Business ID sequence: drives the GX-0001 code ---------- */
 export const gxSeq = pgSequence("gx_seq", { startWith: 1, increment: 1 });
 
+/* ---------- Business types (admin-managed) ---------- */
+export const businessTypes = pgTable("business_types", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  // Default monthly fee (Le/mo) suggested at onboarding — editable per deal.
+  monthlyFee: integer("monthly_fee").notNull().default(500),
+  // Lucide icon key (see ICON_LIBRARY in ui.tsx); falls back to a generic icon.
+  icon: text("icon").notNull().default("Building2"),
+  // Deactivated types stay valid on existing businesses but drop out of the picker.
+  active: boolean("active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /* ---------- Users (agents + admin) ---------- */
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -85,7 +79,9 @@ export const businesses = pgTable("businesses", {
   address: text("address"),
   contactName: text("contact_name"), // Owner / contact person at prospect stage
   contact: text("contact").notNull(),
-  type: businessTypeEnum("type").notNull().default("Salon"),
+  // References business_types.name by value (validated on write, not an FK, so
+  // types can be renamed/deactivated without touching historical rows).
+  type: text("type").notNull().default("Salon"),
   stage: stageEnum("stage").notNull().default("New"),
   objection: text("objection"),
   lostReason: text("lost_reason"),
@@ -140,6 +136,7 @@ export const auditLogs = pgTable("audit_logs", {
 });
 
 export type User = typeof users.$inferSelect;
+export type BusinessType = typeof businessTypes.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type Business = typeof businesses.$inferSelect;
 export type OnboardingAccount = typeof onboardingAccounts.$inferSelect;
