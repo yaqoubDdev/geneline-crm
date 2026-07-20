@@ -150,6 +150,61 @@ export async function resetUserPassword(
   return { ok: true };
 }
 
+/** The holding account that owns orphaned businesses — must never be deleted. */
+const UNASSIGNED_EMAIL = "unassigned@geneline-x.com";
+
+/** Admin removes an agent. Their businesses are reassigned first (FK is restrict). */
+export async function removeAgent(
+  agentId: number,
+  reassignToId: number
+): Promise<{ error?: string; ok?: boolean }> {
+  const session = await auth();
+  if (session?.user?.role !== "admin") return { error: "Only admins can remove agents." };
+  if (Number(session.user.id) === agentId) return { error: "You can't remove your own account." };
+
+  const [target] = await db
+    .select({ id: users.id, name: users.name, email: users.email })
+    .from(users)
+    .where(eq(users.id, agentId))
+    .limit(1);
+  if (!target) return { error: "That agent no longer exists." };
+  if (target.email === UNASSIGNED_EMAIL) {
+    return { error: "The Unassigned account can't be removed — it keeps orphaned businesses valid." };
+  }
+
+  // Reassign any businesses this agent owns before deleting (agentId is NOT NULL, onDelete restrict).
+  const owned = await db
+    .select({ id: businesses.id })
+    .from(businesses)
+    .where(eq(businesses.agentId, agentId));
+  if (owned.length > 0) {
+    if (!reassignToId || reassignToId === agentId) {
+      return { error: "Choose who should take over this agent's businesses." };
+    }
+    const [dest] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, reassignToId))
+      .limit(1);
+    if (!dest) return { error: "That reassignment target no longer exists." };
+    await db.update(businesses).set({ agentId: reassignToId }).where(eq(businesses.agentId, agentId));
+  }
+
+  await db.delete(users).where(eq(users.id, agentId));
+
+  await recordAudit({
+    userId: Number(session.user.id),
+    actorName: session.user.name ?? session.user.email ?? "Admin",
+    action: "delete_user",
+    details: owned.length > 0
+      ? `Removed agent ${target.name} <${target.email}>, reassigned ${owned.length} business${owned.length === 1 ? "" : "es"}`
+      : `Removed agent ${target.name} <${target.email}>`,
+  });
+
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
 /* ---------------- Business CRUD ---------------- */
 type SaveInput = {
   dbId?: number;

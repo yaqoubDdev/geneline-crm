@@ -40,6 +40,7 @@ export const auditActionEnum = pgEnum("audit_action", [
   "create_user",
   "change_password",
   "reset_password",
+  "delete_user",
 ]);
 
 /* ---------- Business ID sequence: drives the GX-0001 code ---------- */

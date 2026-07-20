@@ -9,7 +9,8 @@ export type AuditAction =
   | "account_status_change"
   | "create_user"
   | "change_password"
-  | "reset_password";
+  | "reset_password"
+  | "delete_user";
 
 type AuditEntry = {
   userId: number | null;

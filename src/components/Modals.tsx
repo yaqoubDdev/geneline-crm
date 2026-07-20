@@ -4,11 +4,13 @@ import { useEffect, useState, useTransition } from "react";
 import { useActionState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  CalendarClock, CheckCircle2, ChevronRight, Clock, Copy, DollarSign, KeyRound, Mail, MapPin, Phone, RefreshCw, UserCircle, XCircle,
+  CalendarClock, CheckCircle2, ChevronRight, Clock, Copy, DollarSign, KeyRound, Mail, MapPin, Phone, RefreshCw, Trash2, UserCircle, XCircle,
 } from "lucide-react";
 import { C, ghostBtn, inpStyle, primaryBtn, STAGES, STAGE_COLOR, TYPES } from "@/lib/theme";
 import type { AccountStatus, BizType, Row, Stage } from "@/lib/types";
-import { changeOwnPassword, createAgent, onboardBusiness, resetUserPassword, saveBusiness, setAccountStatus } from "@/lib/actions";
+import { changeOwnPassword, createAgent, onboardBusiness, removeAgent, resetUserPassword, saveBusiness, setAccountStatus } from "@/lib/actions";
+
+const UNASSIGNED_EMAIL = "unassigned@geneline-x.com";
 import { queueNewBusiness } from "@/lib/offline/queue";
 import { Field, FormRow, Info, Modal, ModalFooter, Tag, TYPE_ICON } from "./ui";
 
@@ -359,6 +361,67 @@ export function ResetPasswordModal({
           </button>
         </ModalFooter>
       </form>
+    </Modal>
+  );
+}
+
+/* ---------------- RemoveAgentModal: admin deletes an agent ---------------- */
+export function RemoveAgentModal({
+  agent, bizCount, targets, onClose,
+}: {
+  agent: { id: number; name: string };
+  bizCount: number;
+  targets: { id: number; name: string; email: string }[]; // possible new owners (excludes this agent)
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  // Default to the Unassigned holding account so the businesses are never orphaned.
+  const unassigned = targets.find(t => t.email === UNASSIGNED_EMAIL);
+  const [dest, setDest] = useState<number>(unassigned?.id ?? targets[0]?.id ?? 0);
+
+  const submit = () => {
+    setError(null);
+    start(async () => {
+      const res = await removeAgent(agent.id, dest);
+      if (res?.error) { setError(res.error); return; }
+      router.refresh();
+      onClose();
+    });
+  };
+
+  return (
+    <Modal onClose={onClose} title="Remove agent" badge={agent.name} accent={C.clay}>
+      <div style={{ fontSize: 14, color: C.ink, lineHeight: 1.55, marginBottom: bizCount > 0 ? 16 : 6 }}>
+        {bizCount > 0
+          ? <>Removing <b>{agent.name}</b> deletes their login for good. Their <b>{bizCount}</b>{" "}
+              {bizCount === 1 ? "business needs" : "businesses need"} a new owner — pick who takes over.</>
+          : <>Removing <b>{agent.name}</b> permanently deletes their login. They own no businesses, so nothing is reassigned.</>}
+      </div>
+      {bizCount > 0 && (
+        <Field label="Move their businesses to">
+          <select style={inpStyle} value={dest} onChange={e => setDest(Number(e.target.value))}>
+            {targets.map(t => (
+              <option key={t.id} value={t.id}>
+                {t.name}{t.email === UNASSIGNED_EMAIL ? " (holding account)" : ""}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
+      {error && (
+        <p style={{ color: C.clay, fontSize: 13, fontWeight: 600, margin: "14px 0 0" }}>{error}</p>
+      )}
+      <ModalFooter>
+        <button style={ghostBtn} onClick={onClose} disabled={pending}>Cancel</button>
+        <button onClick={submit} style={{ ...primaryBtn, background: C.clay,
+          boxShadow: "0 4px 14px rgba(201,102,58,.35)",
+          opacity: (bizCount > 0 && !dest) || pending ? .5 : 1,
+          pointerEvents: (bizCount > 0 && !dest) || pending ? "none" : "auto" }}>
+          <Trash2 size={16} /> {pending ? "Removing…" : "Remove agent"}
+        </button>
+      </ModalFooter>
     </Modal>
   );
 }

@@ -2,13 +2,15 @@
 
 import { type CSSProperties, useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Activity, Building2, CheckCircle2, DollarSign, KeyRound, LayoutDashboard, Mail, Menu, Plus, TrendingUp, Users, UserCircle, UserX, type LucideIcon,
+  Activity, Building2, CheckCircle2, DollarSign, KeyRound, LayoutDashboard, Mail, Menu, Plus, Trash2, TrendingUp, Users, UserCircle, UserX, type LucideIcon,
 } from "lucide-react";
 import { C, h1Style, pageStyle, primaryBtn, STAGE_COLOR, STAGES, TYPES } from "@/lib/theme";
 import type { Row } from "@/lib/types";
 import { signOutAction } from "@/lib/actions";
 import { BizCard, Empty, NavBtn, Panel, SearchBar, Select, Stat, TopBar } from "./ui";
-import { AddAgentModal, ChangePasswordModal, DetailModal, ResetPasswordModal } from "./Modals";
+import { AddAgentModal, ChangePasswordModal, DetailModal, RemoveAgentModal, ResetPasswordModal } from "./Modals";
+
+const UNASSIGNED_EMAIL = "unassigned@geneline-x.com";
 
 type AgentInfo = { id: number; name: string; email: string };
 type AgentProgress = {
@@ -47,6 +49,7 @@ const ACTION_LABEL: Record<string, string> = {
   create_user: "added a user",
   change_password: "changed their password",
   reset_password: "reset a password",
+  delete_user: "removed an agent",
 };
 
 function timeAgo(when: string | Date): string {
@@ -85,6 +88,7 @@ export default function AdminApp({
   const [addAgent, setAddAgent] = useState(false);
   const [changePw, setChangePw] = useState(false);
   const [resetAgent, setResetAgent] = useState<{ id: number; name: string } | null>(null);
+  const [removeAgentInfo, setRemoveAgentInfo] = useState<{ id: number; name: string; bizCount: number } | null>(null);
 
   const m = useMemo(() => {
     const won = rows.filter(r => r.stage === "Won");
@@ -331,6 +335,15 @@ export default function AdminApp({
                         fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
                       <KeyRound size={15} /> Reset password
                     </button>
+                    {a.email !== UNASSIGNED_EMAIL && (
+                      <button onClick={() => setRemoveAgentInfo({ id: a.id, name: a.name, bizCount: rs.length })}
+                        title="Remove agent" className="gx-bizcard-onboard"
+                        style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 13px", borderRadius: 10,
+                          border: `1.5px solid ${C.clay}55`, background: "#fff", color: C.clay, fontWeight: 600,
+                          fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                        <Trash2 size={15} /> Remove
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -342,6 +355,11 @@ export default function AdminApp({
       {addAgent && <AddAgentModal onClose={() => setAddAgent(false)} />}
       {changePw && <ChangePasswordModal onClose={() => setChangePw(false)} />}
       {resetAgent && <ResetPasswordModal agent={resetAgent} onClose={() => setResetAgent(null)} />}
+      {removeAgentInfo && (
+        <RemoveAgentModal agent={removeAgentInfo} bizCount={removeAgentInfo.bizCount}
+          targets={agentList.filter(a => a.id !== removeAgentInfo.id)}
+          onClose={() => setRemoveAgentInfo(null)} />
+      )}
     </>
   );
 }
