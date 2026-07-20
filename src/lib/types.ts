@@ -1,5 +1,9 @@
 export type Stage = "New" | "Interested" | "Reluctant" | "Absent" | "Won" | "Lost";
-export type BizType = "Salon" | "Restaurant" | "Corporate";
+export type BizType =
+  | "Salon" | "Barbershop" | "Restaurant" | "Bar / Lounge" | "Shop / Retail"
+  | "Boutique / Fashion" | "Supermarket" | "Pharmacy" | "Clinic / Health"
+  | "Hotel / Guesthouse" | "School" | "Hardware" | "Electronics"
+  | "Auto / Mechanic" | "Real Estate" | "Corporate" | "NGO" | "Other";
 export type AccountStatus = "Pending" | "Active" | "Paused" | "Churned";
 
 export type Account = {

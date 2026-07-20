@@ -15,8 +15,23 @@ import {
 export const roleEnum = pgEnum("role", ["agent", "admin"]);
 export const businessTypeEnum = pgEnum("business_type", [
   "Salon",
+  "Barbershop",
   "Restaurant",
+  "Bar / Lounge",
+  "Shop / Retail",
+  "Boutique / Fashion",
+  "Supermarket",
+  "Pharmacy",
+  "Clinic / Health",
+  "Hotel / Guesthouse",
+  "School",
+  "Hardware",
+  "Electronics",
+  "Auto / Mechanic",
+  "Real Estate",
   "Corporate",
+  "NGO",
+  "Other",
 ]);
 export const stageEnum = pgEnum("stage", [
   "New",

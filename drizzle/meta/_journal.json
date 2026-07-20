@@ -29,6 +29,13 @@
       "when": 1784543431325,
       "tag": "0003_military_spot",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784552086076,
+      "tag": "0004_slim_mad_thinker",
+      "breakpoints": true
     }
   ]
 }

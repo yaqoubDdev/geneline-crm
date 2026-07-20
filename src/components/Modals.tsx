@@ -12,7 +12,7 @@ import { changeOwnPassword, createAgent, onboardBusiness, removeAgent, resetUser
 
 const UNASSIGNED_EMAIL = "unassigned@geneline-x.com";
 import { queueNewBusiness } from "@/lib/offline/queue";
-import { Field, FormRow, Info, Modal, ModalFooter, Tag, TYPE_ICON } from "./ui";
+import { Field, FormRow, Info, Modal, ModalFooter, Tag, typeIcon } from "./ui";
 
 /* ---------------- VisitModal: add / update a business ---------------- */
 export function VisitModal({ row, onClose }: { row: Row | null; onClose: () => void }) {
@@ -433,7 +433,7 @@ const STATUS_COLOR: Record<AccountStatus, string> = {
 };
 
 export function DetailModal({ row, onClose }: { row: Row; onClose: () => void }) {
-  const Icon = TYPE_ICON[row.type];
+  const Icon = typeIcon(row.type);
   const router = useRouter();
   const [pending, start] = useTransition();
   const changeStatus = (s: AccountStatus) =>

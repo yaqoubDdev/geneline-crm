@@ -2,17 +2,38 @@
 
 import type { ReactNode } from "react";
 import {
-  Building2, Briefcase, Filter, KeyRound, LogOut, Phone, Search, Store,
-  Utensils, UserCircle, X, type LucideIcon,
+  Briefcase, Building2, Car, Cross, Filter, GraduationCap, HandHeart, Hammer, Home, Hotel,
+  KeyRound, LogOut, Phone, Scissors, Search, Shirt, ShoppingBag, ShoppingCart, Smartphone,
+  Stethoscope, Utensils, UserCircle, Wine, Wrench, X, type LucideIcon,
 } from "lucide-react";
 import { C, inpStyle, lblStyle, STAGE_COLOR } from "@/lib/theme";
 import type { Row } from "@/lib/types";
 
 export const TYPE_ICON: Record<string, LucideIcon> = {
-  Salon: Store,
+  Salon: Scissors,
+  Barbershop: Scissors,
   Restaurant: Utensils,
+  "Bar / Lounge": Wine,
+  "Shop / Retail": ShoppingBag,
+  "Boutique / Fashion": Shirt,
+  Supermarket: ShoppingCart,
+  Pharmacy: Cross,
+  "Clinic / Health": Stethoscope,
+  "Hotel / Guesthouse": Hotel,
+  School: GraduationCap,
+  Hardware: Hammer,
+  Electronics: Smartphone,
+  "Auto / Mechanic": Wrench,
+  "Real Estate": Home,
   Corporate: Briefcase,
+  NGO: HandHeart,
+  Other: Building2,
 };
+
+/** Icon for a business type, with a safe fallback for any unmapped value. */
+export function typeIcon(type: string): LucideIcon {
+  return TYPE_ICON[type] ?? Building2;
+}
 
 /* ---------------- TopBar ---------------- */
 export function TopBar({
@@ -85,7 +106,7 @@ export function BizCard({
   onOnboard?: (() => void) | null;
   showAgent?: boolean;
 }) {
-  const Icon = TYPE_ICON[r.type];
+  const Icon = typeIcon(r.type);
   return (
     <div onClick={onClick} className="gx-bizcard" style={{ background: C.card, border: `1px solid ${C.line}`,
       borderRadius: 14, padding: "14px 16px", cursor: "pointer", transition: "transform .12s, box-shadow .12s" }}
